@@ -1,2 +1,2 @@
 # PatientSimulationSystem
-This is a clinical patient communication training system
+Welcom here！This is a clinical patient communication training system！
