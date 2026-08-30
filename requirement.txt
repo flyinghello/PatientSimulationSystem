@@ -33,3 +33,4 @@ uuid-utils==0.17.0
 websockets==16.1.1
 xxhash==4.0.1
 zstandard==0.25.0
+python-dotenv==1.1.1
