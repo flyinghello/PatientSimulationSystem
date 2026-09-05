@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CRC 入组前对话</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <div class="brand">CRC 入组前对话</div>
+        <div class="controls">
+          <label class="field">
+            <span>疾病 / 研究</span>
+            <select id="studySelect" disabled>
+              <option value="">加载中…</option>
+            </select>
+          </label>
+          <button id="startBtn" type="button" disabled>开始对话</button>
+          <button id="randomBtn" type="button" class="secondary" disabled>
+            随机人设开局
+          </button>
+        </div>
+      </header>
+
+      <main class="chat-panel">
+        <div id="meta" class="meta">选择研究后点击「开始对话」或「随机人设开局」</div>
+        <div id="personaBar" class="persona-bar" hidden></div>
+        <div id="messages" class="messages" aria-live="polite"></div>
+        <form id="replyForm" class="composer" hidden>
+          <textarea
+            id="crcInput"
+            rows="3"
+            placeholder="输入 CRC 回答…"
+            required
+          ></textarea>
+          <button type="submit" id="sendBtn">发送</button>
+        </form>
+        <section id="reportPanel" class="report-panel" hidden>
+          <div class="report-head">
+            <strong>评分报告</strong>
+            <button type="button" id="retryEvalBtn" class="ghost">重新评分</button>
+          </div>
+          <div id="reportBody" class="report-body"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="detailDialog">
+      <div class="dialog-head">
+        <strong>回合详情</strong>
+        <button type="button" id="closeDetail" class="ghost">关闭</button>
+      </div>
+      <pre id="detailJson"></pre>
+    </dialog>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

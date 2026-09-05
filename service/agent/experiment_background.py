@@ -39,14 +39,21 @@ DEFAULT_TEMPERATURE = 0.1  # 提炼宜忠实，温度偏低
 DEFAULT_MAX_TOKENS = 4096
 DEFAULT_TIMEOUT = 120.0
 
-_SKILL_PATH = (
-    Path(__file__).resolve().parents[1] / "skills" / "experiment_background.md"
-)
+_SERVICE_ROOT = Path(__file__).resolve().parents[1]
+_SKILL_PATH = _SERVICE_ROOT / "skills" / "experiment_background.md"
+# 与 study_paths.DEFAULT_STUDY 保持一致（此处硬编码避免 import 期依赖）
+_DEFAULT_STUDY = "Chronic rhinosinusitis with nasal polyps"
 _DEFAULT_INPUT = (
-    Path(__file__).resolve().parents[1]
+    _SERVICE_ROOT
     / "acknowledge"
     / "relative_experiment"
-    / "B-cell malignancies.json"
+    / f"{_DEFAULT_STUDY}.json"
+)
+_DEFAULT_OUTPUT = (
+    _SERVICE_ROOT
+    / "acknowledge"
+    / "relative_experiment"
+    / f"{_DEFAULT_STUDY}.background.json"
 )
 
 OUTPUT_KEYS = (
@@ -473,20 +480,32 @@ async def extract_experiment_background(
 # CLI
 # ---------------------------------------------------------------------------
 def _build_arg_parser() -> argparse.ArgumentParser:
+    from service.agent.study_paths import DEFAULT_STUDY
+
     p = argparse.ArgumentParser(
         description="CDE 登记资料 → 患者交流模拟研究背景提炼"
     )
     p.add_argument(
+        "--study",
+        default=DEFAULT_STUDY,
+        help=f"研究 stem（默认 {DEFAULT_STUDY}）；决定默认 -i/-o",
+    )
+    p.add_argument(
         "--input",
         "-i",
-        default=str(_DEFAULT_INPUT),
-        help="CDE JSON 路径（默认 B-cell malignancies.json）",
+        default=None,
+        help="CDE JSON 路径（默认 acknowledge/relative_experiment/<study>.json）",
     )
     p.add_argument(
         "--output",
         "-o",
         default=None,
-        help="将结果写入该 JSON 文件；默认打印到 stdout",
+        help="输出 JSON；默认写入 <study>.background.json（加 --stdout 仅打印）",
+    )
+    p.add_argument(
+        "--stdout",
+        action="store_true",
+        help="只打印到 stdout，不写文件",
     )
     p.add_argument(
         "--no-preserve-criteria",
@@ -503,12 +522,28 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 async def _amain(argv: Iterable[str] | None = None) -> int:
+    _root = Path(__file__).resolve().parents[2]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    from service.agent.study_paths import resolve_study
+
     parser = _build_arg_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    paths = resolve_study(args.study)
+    input_path = Path(args.input) if args.input else paths.cde_json
+    output_path: Path | None
+    if args.stdout:
+        output_path = None
+    elif args.output:
+        output_path = Path(args.output)
+    else:
+        output_path = paths.background
 
     config = BackgroundConfig.from_env(
         preserve_criteria_verbatim=not args.no_preserve_criteria,
@@ -520,7 +555,6 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
 
-    input_path = Path(args.input)
     if not input_path.is_file():
         print(f"[FAIL] CDE JSON 不存在: {input_path}", file=sys.stderr)
         return 1
@@ -543,11 +577,10 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
 
     payload = result.to_dict()
     text = json.dumps(payload, ensure_ascii=False, indent=2)
-    if args.output:
-        out = Path(args.output)
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(text + "\n", encoding="utf-8")
-        print(f"wrote {out}", file=sys.stderr)
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(text + "\n", encoding="utf-8")
+        print(f"wrote {output_path}", file=sys.stderr)
     else:
         print(text)
 

@@ -38,27 +38,28 @@ DEFAULT_TEMPERATURE = 0.55
 DEFAULT_MAX_TOKENS = 3072
 DEFAULT_TIMEOUT = 120.0
 DEFAULT_DIALOGUE_TAIL = 8  # 提示词中附带的最近对话轮数
-DEFAULT_MAX_TURNS = 8  # 患者发言轮数上限（含开局首句）
+DEFAULT_MAX_TURNS = 16  # 患者发言轮数上限（含开局首句）
 
 _SERVICE_ROOT = Path(__file__).resolve().parents[1]
 _SKILL_PATH = _SERVICE_ROOT / "skills" / "patient_turn.md"
+_DEFAULT_STUDY = "Chronic rhinosinusitis with nasal polyps"
 _DEFAULT_BACKGROUND = (
     _SERVICE_ROOT
     / "acknowledge"
     / "relative_experiment"
-    / "Chronic rhinosinusitis with nasal polyps.background.json"
+    / f"{_DEFAULT_STUDY}.background.json"
 )
 _DEFAULT_CONCERNS = (
     _SERVICE_ROOT
     / "acknowledge"
     / "questions_pool"
-    / "Chronic rhinosinusitis with nasal polyps.concerns.json"
+    / f"{_DEFAULT_STUDY}.concerns.json"
 )
 _DEFAULT_OPENING = (
     _SERVICE_ROOT
     / "acknowledge"
     / "opening_state"
-    / "Chronic rhinosinusitis with nasal polyps.opening.json"
+    / f"{_DEFAULT_STUDY}.opening.json"
 )
 _DEFAULT_SESSION_DIR = _SERVICE_ROOT / "acknowledge" / "dialogue_sessions"
 
@@ -329,6 +330,8 @@ def build_system_prompt(skill: str, *, max_turns: int = DEFAULT_MAX_TURNS) -> st
         "- 不编造未知研究信息。\n"
         "- 输出状态表示听完CRC回答后的情况，"
         "不能把患者刚提出的问题记录为已经理解。\n"
+        "- 患者台词必须是新的一句，须回应该 CRC 刚说的内容；"
+        "禁止原样或几乎原样重复上一句患者台词。\n"
         "- 退出条件（任一即可结束）：主要疑问讨论充分；需家属商量；"
         "关键安排待确认；暂不考虑；或达到轮数上限。\n"
         f"- 本会话患者发言轮数上限为 {max_turns}（含开局首句）；"
@@ -375,6 +378,7 @@ def build_user_prompt(
         f"{crc_reply.strip()}\n\n"
         f"【轮数提示】\n{limit_note}\n\n"
         "请输出更新后的 JSON（患者画像须与输入一致；含动作/是否结束/结束原因）。"
+        "患者台词须承接 CRC 最新回答，禁止复读上一句患者台词。"
     )
 
 
@@ -410,6 +414,27 @@ def _str_list(value: Any) -> list[str]:
     if isinstance(value, str) and value.strip():
         return [value.strip()]
     return []
+
+
+def _normalize_line_for_compare(text: str) -> str:
+    s = re.sub(r"\s+", "", str(text or "").strip())
+    s = re.sub(r"[，。！？、；：,.!?;:…~～]+$", "", s)
+    return s
+
+
+def _lines_too_similar(a: str, b: str) -> bool:
+    """判定两句患者台词是否实质复读（完全相同或一句包含另一句且长度接近）。"""
+    na, nb = _normalize_line_for_compare(a), _normalize_line_for_compare(b)
+    if not na or not nb:
+        return False
+    if na == nb:
+        return True
+    shorter, longer = (na, nb) if len(na) <= len(nb) else (nb, na)
+    if len(shorter) < 8:
+        return False
+    if shorter in longer and len(shorter) / len(longer) >= 0.85:
+        return True
+    return False
 
 
 def validate_turn_payload(data: dict[str, Any]) -> list[str]:
@@ -576,7 +601,7 @@ def normalize_turn(
 # ---------------------------------------------------------------------------
 @dataclass
 class DialogueSession:
-    """会话目录：state.json / dialogue.jsonl / turns/"""
+    """会话目录：state.json / dialogue.jsonl / turns/ / meta.json"""
 
     root: Path
     background: dict[str, Any]
@@ -584,6 +609,14 @@ class DialogueSession:
     portrait: dict[str, Any]
     state: dict[str, Any]
     dialogue: list[dict[str, str]] = field(default_factory=list)
+    background_path: str = ""
+    concerns_path: str = ""
+    opening_path: str = ""
+    study_stem: str = ""
+    ended: bool = False
+    end_reason: str = ""
+    last_action: str = ""
+    last_line: str = ""
 
     @property
     def state_path(self) -> Path:
@@ -599,14 +632,18 @@ class DialogueSession:
 
     def save(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
-        save_json(
-            self.state_path,
-            {
-                "患者画像": self.portrait,
-                "状态": self.state,
-                "是否结束": False,
-            },
-        )
+        state_payload: dict[str, Any] = {
+            "患者画像": self.portrait,
+            "状态": self.state,
+            "是否结束": self.ended,
+        }
+        if self.last_action:
+            state_payload["动作"] = self.last_action
+        if self.last_line:
+            state_payload["患者台词"] = self.last_line
+        if self.end_reason:
+            state_payload["结束原因"] = self.end_reason
+        save_json(self.state_path, state_payload)
         with self.dialogue_path.open("w", encoding="utf-8") as fh:
             for item in self.dialogue:
                 fh.write(json.dumps(item, ensure_ascii=False) + "\n")
@@ -615,6 +652,11 @@ class DialogueSession:
             {
                 "updated_at": datetime.now().isoformat(timespec="seconds"),
                 "turns": sum(1 for x in self.dialogue if x.get("role") == "patient"),
+                "ended": self.ended,
+                "study_stem": self.study_stem,
+                "background_path": self.background_path,
+                "concerns_path": self.concerns_path,
+                "opening_path": self.opening_path,
             },
         )
 
@@ -629,6 +671,10 @@ class DialogueSession:
         background: dict[str, Any],
         concerns: list[Any],
         opening: dict[str, Any],
+        background_path: str = "",
+        concerns_path: str = "",
+        opening_path: str = "",
+        study_stem: str = "",
     ) -> DialogueSession:
         portrait, state, line = extract_opening_bundle(opening)
         session = cls(
@@ -638,6 +684,12 @@ class DialogueSession:
             portrait=portrait,
             state=state,
             dialogue=[],
+            background_path=background_path,
+            concerns_path=concerns_path,
+            opening_path=opening_path,
+            study_stem=study_stem,
+            ended=False,
+            last_line=line,
         )
         if line:
             session.dialogue.append({"role": "patient", "content": line})
@@ -675,6 +727,12 @@ class DialogueSession:
                             "content": str(item.get("content", "")),
                         }
                     )
+        meta: dict[str, Any] = {}
+        meta_path = session_dir / "meta.json"
+        if meta_path.is_file():
+            loaded_meta = load_json(meta_path)
+            if isinstance(loaded_meta, dict):
+                meta = loaded_meta
         return cls(
             root=session_dir,
             background=background,
@@ -682,6 +740,14 @@ class DialogueSession:
             portrait=portrait,
             state=state,
             dialogue=dialogue,
+            background_path=str(meta.get("background_path", "")),
+            concerns_path=str(meta.get("concerns_path", "")),
+            opening_path=str(meta.get("opening_path", "")),
+            study_stem=str(meta.get("study_stem", "")),
+            ended=bool(state_file.get("是否结束", meta.get("ended", False))),
+            end_reason=str(state_file.get("结束原因", "") or ""),
+            last_action=str(state_file.get("动作", "") or ""),
+            last_line=str(state_file.get("患者台词", "") or ""),
         )
 
 
@@ -801,6 +867,24 @@ class PatientTurnAgent:
         next_count = patient_turn_count + 1
         force_end = next_count >= self.config.max_turns
 
+        prev_patient_line = ""
+        for item in reversed(list(dialogue)):
+            if str(item.get("role", "")).lower() == "patient":
+                prev_patient_line = str(item.get("content", "") or "").strip()
+                break
+
+        user_content = build_user_prompt(
+            background=background,
+            concerns=concerns,
+            portrait=portrait,
+            prev_state=prev_state,
+            dialogue_text=format_dialogue(
+                dialogue, tail=self.config.dialogue_tail
+            ),
+            crc_reply=crc_reply,
+            patient_turn_count=patient_turn_count,
+            max_turns=self.config.max_turns,
+        )
         messages = [
             {
                 "role": "system",
@@ -808,25 +892,11 @@ class PatientTurnAgent:
                     self.skill, max_turns=self.config.max_turns
                 ),
             },
-            {
-                "role": "user",
-                "content": build_user_prompt(
-                    background=background,
-                    concerns=concerns,
-                    portrait=portrait,
-                    prev_state=prev_state,
-                    dialogue_text=format_dialogue(
-                        dialogue, tail=self.config.dialogue_tail
-                    ),
-                    crc_reply=crc_reply,
-                    patient_turn_count=patient_turn_count,
-                    max_turns=self.config.max_turns,
-                ),
-            },
+            {"role": "user", "content": user_content},
         ]
         text, raw, usage = await self._chat(messages)
         parsed = parse_turn_json(text)
-        return normalize_turn(
+        result = normalize_turn(
             parsed,
             locked_portrait=portrait,
             prev_state=prev_state,
@@ -835,6 +905,45 @@ class PatientTurnAgent:
             raw=raw,
             usage=usage,
         )
+
+        # 模型偶发原样复读上一句患者台词：强制重试一次
+        if (
+            prev_patient_line
+            and _lines_too_similar(result.line, prev_patient_line)
+            and not force_end
+        ):
+            logger.warning("患者台词与上一句过于相似，重试一次生成")
+            retry_messages = [
+                *messages,
+                {
+                    "role": "assistant",
+                    "content": json.dumps(result.to_dict(), ensure_ascii=False),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "上一版「患者台词」几乎原样重复了上一句患者发言，不合格。"
+                        f"上一句患者台词是：{prev_patient_line}\n"
+                        f"CRC 本轮说了：{crc_reply.strip()}\n"
+                        "请重新输出完整 JSON：台词必须是新的一句，"
+                        "先点出/承接 CRC 刚说的内容，再追问、表态或换话题；"
+                        "禁止复读上一句。"
+                    ),
+                },
+            ]
+            text2, raw2, usage2 = await self._chat(retry_messages)
+            parsed2 = parse_turn_json(text2)
+            result = normalize_turn(
+                parsed2,
+                locked_portrait=portrait,
+                prev_state=prev_state,
+                force_end=force_end,
+                raw_text=text2,
+                raw=raw2,
+                usage=usage2,
+            )
+
+        return result
 
     async def apply_crc_reply(
         self,
@@ -858,20 +967,13 @@ class PatientTurnAgent:
         session.state = result.state
         session.portrait = result.data["患者画像"]
         session.dialogue.append({"role": "patient", "content": result.line})
+        session.ended = result.ended
+        session.end_reason = result.end_reason
+        session.last_action = result.action
+        session.last_line = result.line
         session.save()
         turn_idx = sum(1 for x in session.dialogue if x.get("role") == "patient")
         session.append_turn_snapshot(result.to_dict(), index=turn_idx)
-        save_json(
-            session.root / "state.json",
-            {
-                "患者画像": session.portrait,
-                "状态": session.state,
-                "动作": result.action,
-                "患者台词": result.line,
-                "是否结束": result.ended,
-                "结束原因": result.end_reason,
-            },
-        )
         return result
 
 
@@ -880,11 +982,16 @@ class PatientTurnAgent:
 # ---------------------------------------------------------------------------
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="入组前多轮患者回应")
-    p.add_argument("--background", "-b", default=str(_DEFAULT_BACKGROUND))
-    p.add_argument("--concerns", "-c", default=str(_DEFAULT_CONCERNS))
+    p.add_argument(
+        "--study",
+        default=_DEFAULT_STUDY,
+        help=f"研究 stem（默认 {_DEFAULT_STUDY}）",
+    )
+    p.add_argument("--background", "-b", default=None)
+    p.add_argument("--concerns", "-c", default=None)
     p.add_argument(
         "--opening",
-        default=str(_DEFAULT_OPENING),
+        default=None,
         help="开局 JSON（含患者画像/状态/首句）；新会话时使用",
     )
     p.add_argument(
@@ -923,12 +1030,23 @@ def _new_session_dir(base: Path) -> Path:
 
 
 async def _amain(argv: Iterable[str] | None = None) -> int:
+    _root = Path(__file__).resolve().parents[2]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    from service.agent.study_paths import resolve_study
+
     parser = _build_arg_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    paths = resolve_study(args.study)
+    bg_path = Path(args.background) if args.background else paths.background
+    concerns_path = Path(args.concerns) if args.concerns else paths.concerns
+    opening_path = Path(args.opening) if args.opening else paths.opening
 
     config = PatientTurnConfig.from_env(
         trust_env=False if args.no_proxy else None,
@@ -940,9 +1058,6 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
 
-    bg_path = Path(args.background)
-    concerns_path = Path(args.concerns)
-    opening_path = Path(args.opening)
     for path, label in (
         (bg_path, "研究背景"),
         (concerns_path, "顾虑池"),
@@ -957,12 +1072,32 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
         print("[FAIL] 研究背景须为对象，顾虑池须为数组", file=sys.stderr)
         return 1
 
+    artifact_kwargs = {
+        "background_path": str(bg_path.resolve()),
+        "concerns_path": str(concerns_path.resolve()),
+        "opening_path": str(opening_path.resolve()) if opening_path else "",
+        "study_stem": paths.stem,
+    }
+
     if args.session:
         session_dir = Path(args.session)
         if (session_dir / "state.json").is_file():
             session = DialogueSession.load(
                 session_dir, background=background, concerns=concerns
             )
+            # 若 meta 未钉路径，用本次 CLI 路径补全
+            if not session.background_path:
+                session.background_path = artifact_kwargs["background_path"]
+            if not session.concerns_path:
+                session.concerns_path = artifact_kwargs["concerns_path"]
+            if not session.study_stem:
+                session.study_stem = paths.stem
+            if session.background_path and Path(session.background_path).resolve() != bg_path.resolve():
+                print(
+                    f"[WARN] 会话 meta 背景为 {session.background_path}，"
+                    f"本次加载为 {bg_path}",
+                    file=sys.stderr,
+                )
         else:
             if not opening_path.is_file():
                 print(f"[FAIL] 开局文件不存在: {opening_path}", file=sys.stderr)
@@ -972,17 +1107,19 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
                 background=background,
                 concerns=concerns,
                 opening=load_json(opening_path),
+                **artifact_kwargs,
             )
     else:
         if not opening_path.is_file():
             print(f"[FAIL] 开局文件不存在: {opening_path}", file=sys.stderr)
             return 1
-        session_dir = _new_session_dir(_DEFAULT_SESSION_DIR)
+        session_dir = _new_session_dir(paths.sessions_dir)
         session = DialogueSession.create_from_opening(
             session_dir=session_dir,
             background=background,
             concerns=concerns,
             opening=load_json(opening_path),
+            **artifact_kwargs,
         )
 
     print(f"[session] {session.root}", file=sys.stderr)

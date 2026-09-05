@@ -1,0 +1,9 @@
+{
+  "updated_at": "2026-09-05T18:14:34",
+  "turns": 2,
+  "ended": false,
+  "study_stem": "Chronic rhinosinusitis with nasal polyps",
+  "background_path": "E:\\AI_creation\\PatientSimulationSystem\\service\\acknowledge\\relative_experiment\\Chronic rhinosinusitis with nasal polyps.background.json",
+  "concerns_path": "E:\\AI_creation\\PatientSimulationSystem\\service\\acknowledge\\questions_pool\\Chronic rhinosinusitis with nasal polyps.concerns.json",
+  "opening_path": "E:\\AI_creation\\PatientSimulationSystem\\service\\acknowledge\\opening_state\\Chronic rhinosinusitis with nasal polyps.opening.json"
+}

@@ -38,17 +38,18 @@ DEFAULT_TIMEOUT = 120.0
 
 _SERVICE_ROOT = Path(__file__).resolve().parents[1]
 _SKILL_PATH = _SERVICE_ROOT / "skills" / "opening_question.md"
+_DEFAULT_STUDY = "Chronic rhinosinusitis with nasal polyps"
 _DEFAULT_BACKGROUND = (
     _SERVICE_ROOT
     / "acknowledge"
     / "relative_experiment"
-    / "Chronic rhinosinusitis with nasal polyps.background.json"
+    / f"{_DEFAULT_STUDY}.background.json"
 )
 _DEFAULT_CONCERNS = (
     _SERVICE_ROOT
     / "acknowledge"
     / "questions_pool"
-    / "Chronic rhinosinusitis with nasal polyps.concerns.json"
+    / f"{_DEFAULT_STUDY}.concerns.json"
 )
 _DEFAULT_OUT_DIR = _SERVICE_ROOT / "acknowledge" / "opening_state"
 
@@ -378,7 +379,9 @@ def normalize_opening(
         COMPANION_LABELS,
         DECISION_ROLE_LABELS,
         EDUCATION_LABELS,
+        EMOTION_BASE_LABELS,
         LIFE_CONSTRAINT_LABELS,
+        PRESSURE_LABELS,
         TRIAL_EXPERIENCE_LABELS,
     )
 
@@ -394,13 +397,11 @@ def normalize_opening(
     age = max(lo, min(hi, age))
 
     education = str(persona.get("education", "mid"))
-    edu_label = EDUCATION_LABELS.get(education, education)
-    # 画像「学历」用更短口语：本科及以上 → 本科；高中大专保持；初中及以下 → 初中
     edu_short = {
         "low": "初中",
         "mid": "高中/大专",
         "high": "本科",
-    }.get(education, edu_label)
+    }.get(education, EDUCATION_LABELS.get(education, education))
 
     companion_code = str(persona.get("companion", "alone"))
     companion_map = {
@@ -427,20 +428,39 @@ def normalize_opening(
     decision_code = str(persona.get("decision_role", "self"))
     decision_map = {
         "self": "本人主导决策",
-        "family_led": "家属主导决策",
-        "self_vs_family": "本人想参加但家属反对",
+        "family_led": "想与家属商量",
+        "self_vs_family": "想参加但需面对家属反对",
     }
     decision = decision_map.get(
         decision_code,
         DECISION_ROLE_LABELS.get(decision_code, decision_code),
     )
-    # 示例偏好更口语
-    if decision_code == "self_vs_family":
-        decision = portrait_in.get("决策偏好") or "想参加但需面对家属反对"
-    elif decision_code == "family_led":
-        decision = portrait_in.get("决策偏好") or "想与家属商量"
-    elif "商量" in str(portrait_in.get("决策偏好", "")):
-        decision = str(portrait_in.get("决策偏好")).strip() or decision
+
+    emotion_code = str(persona.get("emotion_base", "hesitant"))
+    emotion_label = EMOTION_BASE_LABELS.get(emotion_code, emotion_code)
+    pressure_code = str(persona.get("pressure", "mid"))
+    pressure_label = PRESSURE_LABELS.get(pressure_code, pressure_code)
+    style_map = {
+        "anxious": "紧张，反复确认",
+        "hesitant": "谨慎，主动提问",
+        "skeptical": "怀疑，追问依据",
+        "pragmatic": "务实，关注费用与流程",
+        "eager": "急切，希望尽快推进",
+    }
+    talk_style = style_map.get(emotion_code, "愿意提问")
+    if pressure_code == "high":
+        talk_style = f"{talk_style}（压力偏高）"
+    elif pressure_code == "low":
+        talk_style = f"{talk_style}（压力偏低）"
+
+    emotion_state_map = {
+        "anxious": "焦虑不安",
+        "hesitant": "有些犹豫",
+        "skeptical": "半信半疑",
+        "pragmatic": "务实冷静",
+        "eager": "急切求治",
+    }
+    emotion_state = emotion_state_map.get(emotion_code, "有些犹豫")
 
     constraints = persona.get("life_constraints") or []
     if isinstance(constraints, str):
@@ -451,21 +471,20 @@ def normalize_opening(
     if not disease_bg and disease:
         disease_bg = f"自述与{disease}相关不适，具体病史待询问"
 
+    # 程序采样的人设字段强制锁定，不允许模型覆盖
     portrait = {
         "年龄": age,
-        "学历": str(portrait_in.get("学历") or edu_short).strip() or edu_short,
-        "健康信息理解能力": str(
-            portrait_in.get("健康信息理解能力")
-            or HEALTH_LITERACY_BY_EDU.get(education, "中")
-        ).strip(),
+        "学历": edu_short,
+        "健康信息理解能力": HEALTH_LITERACY_BY_EDU.get(education, "中"),
         "试验经历": trial,
-        "交流特点": str(portrait_in.get("交流特点", "") or "").strip()
-        or "愿意提问",
+        "交流特点": talk_style,
         "决策偏好": decision,
         "陪同者": companion,
         "生活限制": life,
         "疾病背景": disease_bg,
         "筛选状态": "尚未正式筛选",
+        "情绪基调": emotion_label,
+        "压力水平": pressure_label,
     }
 
     pool_set = {t.strip() for t in concern_topics if t.strip()}
@@ -491,7 +510,7 @@ def normalize_opening(
         "尚不清楚": _str_list(state_in.get("尚不清楚")),
         "待核实事项": _str_list(state_in.get("待核实事项")),
         "已讨论清楚的话题": _str_list(state_in.get("已讨论清楚的话题")),
-        "当前情绪": str(state_in.get("当前情绪", "") or "").strip() or "有些犹豫",
+        "当前情绪": emotion_state,
         "参与态度": str(state_in.get("参与态度", "") or "").strip() or "愿意了解",
     }
 
@@ -711,15 +730,20 @@ async def generate_opening(
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="入组前首次提问 / 开局状态生成")
     p.add_argument(
+        "--study",
+        default=_DEFAULT_STUDY,
+        help=f"研究 stem（默认 {_DEFAULT_STUDY}）；决定默认 -b/-c/-o",
+    )
+    p.add_argument(
         "--background",
         "-b",
-        default=str(_DEFAULT_BACKGROUND),
+        default=None,
         help="研究背景 JSON",
     )
     p.add_argument(
         "--concerns",
         "-c",
-        default=str(_DEFAULT_CONCERNS),
+        default=None,
         help="顾虑池 JSON",
     )
     p.add_argument(
@@ -737,12 +761,23 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 async def _amain(argv: Iterable[str] | None = None) -> int:
+    _root = Path(__file__).resolve().parents[2]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    from service.agent.study_paths import resolve_study
+
     parser = _build_arg_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    paths = resolve_study(args.study)
+    bg_path = Path(args.background) if args.background else paths.background
+    concerns_path = Path(args.concerns) if args.concerns else paths.concerns
+    out_path = Path(args.output) if args.output else paths.opening
 
     config = OpeningConfig.from_env(trust_env=False if args.no_proxy else None)
     try:
@@ -751,8 +786,6 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
 
-    bg_path = Path(args.background)
-    concerns_path = Path(args.concerns)
     if not bg_path.is_file():
         print(f"[FAIL] 研究背景不存在: {bg_path}", file=sys.stderr)
         return 1
@@ -762,12 +795,6 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
     if args.persona and not Path(args.persona).is_file():
         print(f"[FAIL] 患者特征不存在: {args.persona}", file=sys.stderr)
         return 1
-
-    out_path = (
-        Path(args.output)
-        if args.output
-        else default_output_path(bg_path, Path(args.out_dir))
-    )
 
     try:
         async with OpeningQuestionAgent(config) as agent:

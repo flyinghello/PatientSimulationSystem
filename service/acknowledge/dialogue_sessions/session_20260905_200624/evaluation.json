@@ -1,0 +1,89 @@
+{
+  "overall_score": 85.7,
+  "passed": true,
+  "summary": "CRC与患者的沟通表现良好，能清晰回答患者问题，尊重患者意愿，但在个性化适配和共情能力方面还有提升空间。",
+  "dimensions": [
+    {
+      "category": "沟通准备",
+      "dimension": "信息传递",
+      "score": 80.0,
+      "passed": true,
+      "evidence": "CRC使用通俗易懂的语言向患者解释了试验的相关信息，如试验地点、持续时间、去医院次数、检查项目等。",
+      "suggestion": "可以进一步提供更详细的信息，比如具体的补贴金额等。"
+    },
+    {
+      "category": "沟通准备",
+      "dimension": "知情同意",
+      "score": 80.0,
+      "passed": true,
+      "evidence": "CRC告知患者会向其家人解释试验安全性，且主要看患者个人意愿，尊重了患者的知情同意权。",
+      "suggestion": "可以主动询问患者是否有其他疑问，确保患者充分理解。"
+    },
+    {
+      "category": "沟通准备",
+      "dimension": "个性化适配",
+      "score": 70.0,
+      "passed": true,
+      "evidence": "CRC根据患者提出的家离医院远的问题，提供了在天津医院参加试验的建议。",
+      "suggestion": "可以进一步了解患者的具体情况，提供更个性化的解决方案。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "耐心程度",
+      "score": 90.0,
+      "passed": true,
+      "evidence": "CRC耐心地回答了患者的一系列问题，没有表现出急躁或催促。",
+      "suggestion": "继续保持。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "共情能力",
+      "score": 80.0,
+      "passed": true,
+      "evidence": "CRC能够理解患者家人可能会担心的情况。",
+      "suggestion": "可以更加关注患者的情绪，给予更多情感上的支持。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "尊重程度",
+      "score": 90.0,
+      "passed": true,
+      "evidence": "CRC尊重患者的选择，没有强行催促入组。",
+      "suggestion": "继续保持。"
+    },
+    {
+      "category": "合规性",
+      "dimension": "知情沟通合规",
+      "score": 90.0,
+      "passed": true,
+      "evidence": "CRC没有夸大疗效、隐瞒风险等违规行为。",
+      "suggestion": "继续保持。"
+    }
+  ],
+  "principles": {
+    "以患者为中心": "沟通围绕患者的疑问展开，如试验的时间、地点、费用等。",
+    "双向尊重": "尊重患者的意愿和家人的担忧。",
+    "持续耐心": "耐心回答患者的多个问题。"
+  },
+  "strengths": [
+    "耐心回答问题",
+    "尊重患者意愿"
+  ],
+  "improvements": [
+    "提供更详细信息",
+    "加强个性化适配",
+    "提升共情能力"
+  ],
+  "raw_text": "{\"overall_score\": 85.7, \"passed\": true, \"summary\": \"CRC与患者的沟通表现良好，能清晰回答患者问题，尊重患者意愿，但在个性化适配和共情能力方面还有提升空间。\", \"dimensions\": [{\"category\": \"沟通准备\", \"dimension\": \"信息传递\", \"score\": 80, \"passed\": true, \"evidence\": \"CRC使用通俗易懂的语言向患者解释了试验的相关信息，如试验地点、持续时间、去医院次数、检查项目等。\", \"suggestion\": \"可以进一步提供更详细的信息，比如具体的补贴金额等。\"}, {\"category\": \"沟通准备\", \"dimension\": \"知情同意\", \"score\": 80, \"passed\": true, \"evidence\": \"CRC告知患者会向其家人解释试验安全性，且主要看患者个人意愿，尊重了患者的知情同意权。\", \"suggestion\": \"可以主动询问患者是否有其他疑问，确保患者充分理解。\"}, {\"category\": \"沟通准备\", \"dimension\": \"个性化适配\", \"score\": 70, \"passed\": true, \"evidence\": \"CRC根据患者提出的家离医院远的问题，提供了在天津医院参加试验的建议。\", \"suggestion\": \"可以进一步了解患者的具体情况，提供更个性化的解决方案。\"}, {\"category\": \"沟通态度\", \"dimension\": \"耐心程度\", \"score\": 90, \"passed\": true, \"evidence\": \"CRC耐心地回答了患者的一系列问题，没有表现出急躁或催促。\", \"suggestion\": \"继续保持。\"}, {\"category\": \"沟通态度\", \"dimension\": \"共情能力\", \"score\": 80, \"passed\": true, \"evidence\": \"CRC能够理解患者家人可能会担心的情况。\", \"suggestion\": \"可以更加关注患者的情绪，给予更多情感上的支持。\"}, {\"category\": \"沟通态度\", \"dimension\": \"尊重程度\", \"score\": 90, \"passed\": true, \"evidence\": \"CRC尊重患者的选择，没有强行催促入组。\", \"suggestion\": \"继续保持。\"}, {\"category\": \"合规性\", \"dimension\": \"知情沟通合规\", \"score\": 90, \"passed\": true, \"evidence\": \"CRC没有夸大疗效、隐瞒风险等违规行为。\", \"suggestion\": \"继续保持。\"}], \"principles\": {\"以患者为中心\": \"沟通围绕患者的疑问展开，如试验的时间、地点、费用等。\", \"双向尊重\": \"尊重患者的意愿和家人的担忧。\", \"持续耐心\": \"耐心回答患者的多个问题。\"}, \"strengths\": [\"耐心回答问题\", \"尊重患者意愿\"], \"improvements\": [\"提供更详细信息\", \"加强个性化适配\", \"提升共情能力\"]}",
+  "usage": {
+    "completion_tokens": 600,
+    "prompt_tokens": 1284,
+    "total_tokens": 1884,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}

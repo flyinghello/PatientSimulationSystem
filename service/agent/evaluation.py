@@ -39,12 +39,13 @@ DEFAULT_TIMEOUT = 90.0
 
 _RUBRIC_PATH = Path(__file__).resolve().parents[1] / "skills" / "evaluate.md"
 
-# 与 evaluate.md 对齐的评分维度（category -> dimensions）
+# 与 evaluate.md 对齐的评分维度（入组前；不含随访）
 RUBRIC_DIMENSIONS: dict[str, list[str]] = {
     "沟通准备": ["信息传递", "知情同意", "个性化适配"],
     "沟通态度": ["耐心程度", "共情能力", "尊重程度"],
-    "随访关怀": ["主动关心", "态度表现", "信息获取"],
+    "合规性": ["知情沟通合规"],
 }
+EXPECTED_DIMENSION_COUNT = sum(len(v) for v in RUBRIC_DIMENSIONS.values())
 
 CORE_PRINCIPLES = ["以患者为中心", "双向尊重", "持续耐心"]
 
@@ -102,6 +103,7 @@ class EvalConfig:
     timeout: float = DEFAULT_TIMEOUT
     rubric_path: Path = _RUBRIC_PATH
     pass_score: float = 70.0  # 维度/总分合格线
+    trust_env: bool = True
 
     @classmethod
     def from_env(cls, **overrides: Any) -> EvalConfig:
@@ -151,6 +153,7 @@ class EvalConfig:
             ),
             "timeout": float(os.getenv("ARK_TIMEOUT", str(DEFAULT_TIMEOUT))),
             "pass_score": float(os.getenv("ARK_EVAL_PASS_SCORE", "70")),
+            "trust_env": True,
         }
         if rubric is not None:
             values["rubric_path"] = Path(rubric)
@@ -181,7 +184,12 @@ def load_rubric(path: Path | None = None) -> str:
 def format_dialogue(
     dialogue: Sequence[ChatMessage | dict[str, str]] | str,
 ) -> str:
-    """把对话整理成可读文本。支持字符串或消息列表。"""
+    """把对话整理成可读文本。支持字符串或消息列表。
+
+    角色约定与 patient_turn 一致：
+      patient / assistant → 患者
+      crc / user → CRC（受训者）
+    """
     if isinstance(dialogue, str):
         return dialogue.strip()
 
@@ -193,14 +201,37 @@ def format_dialogue(
             role = str(item.get("role", "unknown"))
             content = str(item.get("content", ""))
         role_zh = {
-            "crc": "CRC",
-            "assistant": "CRC",
             "patient": "患者",
-            "user": "患者",
+            "crc": "CRC",
+            "user": "CRC",
+            "assistant": "患者",
             "system": "系统",
         }.get(role.lower(), role)
         lines.append(f"{i}. 【{role_zh}】{content.strip()}")
     return "\n".join(lines)
+
+
+def load_session_dialogue(session_dir: Path) -> list[dict[str, str]]:
+    """从 patient_turn 会话目录读取 dialogue.jsonl。"""
+    dpath = session_dir / "dialogue.jsonl"
+    if not dpath.is_file():
+        raise FileNotFoundError(f"会话对话文件不存在: {dpath}")
+    dialogue: list[dict[str, str]] = []
+    for line in dpath.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        item = json.loads(line)
+        if isinstance(item, dict):
+            dialogue.append(
+                {
+                    "role": str(item.get("role", "")),
+                    "content": str(item.get("content", "")),
+                }
+            )
+    if not dialogue:
+        raise ValueError(f"会话对话为空: {dpath}")
+    return dialogue
 
 
 def build_system_prompt(rubric: str) -> str:
@@ -222,11 +253,11 @@ def build_system_prompt(rubric: str) -> str:
         "【评分规则】\n"
         "1. 每个维度打 0~100 分；>=70 视为该维度合格（passed=true）。\n"
         "2. overall_score 为各维度算术平均，保留 1 位小数。\n"
-        "3. 对话中未涉及的维度：根据是否应主动覆盖判断；"
-        "若场景不需要（如纯知情沟通未进入随访），可给中性分 60~75，"
-        "并在 evidence 说明“对话未覆盖，按场景酌情评分”。\n"
-        "4. evidence 须引用对话中的具体表述；suggestion 给出可执行改进点。\n"
-        "5. 只输出一个 JSON 对象，不要 markdown 代码块，不要其它说明。\n\n"
+        "3. 本标准仅用于入组前知情沟通；不要评分「随访关怀」或任何随访相关维度。\n"
+        "4. 对话中未充分体现的维度：根据 CRC 是否本应主动覆盖判断；"
+        "可酌情给分，并在 evidence 说明依据。\n"
+        "5. evidence 须引用对话中的具体表述；suggestion 给出可执行改进点。\n"
+        "6. 只输出一个 JSON 对象，不要 markdown 代码块，不要其它说明。\n\n"
         "【JSON Schema】\n"
         "{\n"
         '  "overall_score": 85.0,\n'
@@ -250,7 +281,8 @@ def build_system_prompt(rubric: str) -> str:
         '  "strengths": ["..."],\n'
         '  "improvements": ["..."]\n'
         "}\n"
-        "dimensions 必须覆盖全部 9 个维度，不得遗漏。"
+        f"dimensions 必须覆盖全部 {EXPECTED_DIMENSION_COUNT} 个维度"
+        "（沟通准备 3 + 沟通态度 3 + 合规性 1），不得遗漏，不得增加随访类维度。"
     )
 
 
@@ -424,17 +456,21 @@ class EvaluationAgent:
         self._owns_client = client is None
         self._rubric: str | None = None
 
+    def _make_client(self, *, trust_env: bool) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            base_url=self.config.base_url.rstrip("/"),
+            headers={
+                "Authorization": f"Bearer {self.config.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=self.config.timeout,
+            trust_env=trust_env,
+        )
+
     async def __aenter__(self) -> EvaluationAgent:
         if self._client is None:
             self.config.require_api_key()
-            self._client = httpx.AsyncClient(
-                base_url=self.config.base_url.rstrip("/"),
-                headers={
-                    "Authorization": f"Bearer {self.config.api_key}",
-                    "Content-Type": "application/json",
-                },
-                timeout=self.config.timeout,
-            )
+            self._client = self._make_client(trust_env=self.config.trust_env)
         self._rubric = load_rubric(self.config.rubric_path)
         return self
 
@@ -450,6 +486,16 @@ class EvaluationAgent:
             )
         return self._client
 
+    async def _rebuild_client_without_proxy(self) -> None:
+        if not self._owns_client:
+            return
+        old = self._client
+        self._client = self._make_client(trust_env=False)
+        self.config.trust_env = False
+        if old is not None:
+            await old.aclose()
+        logger.warning("HTTP 代理失败，已改用直连（可用 --no-proxy）")
+
     @property
     def rubric(self) -> str:
         if self._rubric is None:
@@ -457,7 +503,6 @@ class EvaluationAgent:
         return self._rubric
 
     async def _chat(self, messages: list[dict[str, str]]) -> tuple[str, dict, dict]:
-        client = self._ensure_client()
         body: dict[str, Any] = {
             "model": self.config.model,
             "messages": messages,
@@ -468,7 +513,18 @@ class EvaluationAgent:
         logger.debug(
             "Eval chat model=%s messages=%d", self.config.model, len(messages)
         )
-        resp = await client.post("/chat/completions", json=body)
+
+        async def _post() -> httpx.Response:
+            return await self._ensure_client().post("/chat/completions", json=body)
+
+        try:
+            resp = await _post()
+        except httpx.ConnectError:
+            if not self.config.trust_env or not self._owns_client:
+                raise
+            await self._rebuild_client_without_proxy()
+            resp = await _post()
+
         if resp.status_code >= 400:
             raise RuntimeError(
                 f"方舟 Chat Completions 失败 HTTP {resp.status_code}: {resp.text[:800]}"
@@ -556,10 +612,21 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--dialogue",
         default=None,
-        help="对话文本文件路径；不填则使用内置示例对话",
+        help="对话文本文件路径；不填且无 --session 时使用内置示例对话",
+    )
+    p.add_argument(
+        "--session",
+        "-s",
+        default=None,
+        help="patient_turn 会话目录（读取 dialogue.jsonl）",
     )
     p.add_argument("--trainee", default=None, help="受训 CRC 姓名")
-    p.add_argument("--scenario", default="高血压新药临床试验知情沟通")
+    p.add_argument(
+        "--scenario",
+        default="临床试验入组前知情沟通",
+        help="情景描述（入组前训练勿用随访场景名）",
+    )
+    p.add_argument("--no-proxy", action="store_true")
     p.add_argument("-v", "--verbose", action="store_true")
     return p
 
@@ -574,26 +641,36 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    config = EvalConfig.from_env()
+    config = EvalConfig.from_env(trust_env=False if args.no_proxy else None)
     try:
         config.require_api_key()
     except ValueError as exc:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
 
-    if args.dialogue:
-        dialogue: Sequence[ChatMessage] | str = Path(args.dialogue).read_text(
-            encoding="utf-8"
-        )
+    if args.session:
+        try:
+            dialogue: Sequence[ChatMessage] | Sequence[dict[str, str]] | str = (
+                load_session_dialogue(Path(args.session))
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"[FAIL] 无法读取会话: {exc}", file=sys.stderr)
+            return 1
+    elif args.dialogue:
+        dialogue = Path(args.dialogue).read_text(encoding="utf-8")
     else:
         dialogue = _SAMPLE_DIALOGUE
 
-    async with EvaluationAgent(config) as agent:
-        report = await agent.evaluate(
-            dialogue,
-            scenario=args.scenario,
-            trainee_name=args.trainee,
-        )
+    try:
+        async with EvaluationAgent(config) as agent:
+            report = await agent.evaluate(
+                dialogue,
+                scenario=args.scenario,
+                trainee_name=args.trainee,
+            )
+    except httpx.ConnectError as exc:
+        print(f"[FAIL] 连接失败，可加 --no-proxy。详情: {exc}", file=sys.stderr)
+        return 1
 
     print(f"model={config.model}")
     print(f"overall={report.overall_score} passed={report.passed}")

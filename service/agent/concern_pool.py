@@ -8,7 +8,7 @@
   - CRC 培训材料 Markdown（如 crc_interview.md）
 
 输出：
-  service/acknowledge/questions_pool/*.json
+  service/acknowledge/questions_pool/*.concerns.json
 """
 
 from __future__ import annotations
@@ -39,13 +39,17 @@ DEFAULT_TOPIC_MAX = 15
 
 _SERVICE_ROOT = Path(__file__).resolve().parents[1]
 _SKILL_PATH = _SERVICE_ROOT / "skills" / "concern_pool.md"
+_DEFAULT_STUDY = "Chronic rhinosinusitis with nasal polyps"
 _DEFAULT_BACKGROUND = (
     _SERVICE_ROOT
     / "acknowledge"
     / "relative_experiment"
-    / "B-cell malignancies.background.json"
+    / f"{_DEFAULT_STUDY}.background.json"
 )
-_DEFAULT_TRAINING = _SERVICE_ROOT / "acknowledge" / "crc_interview.md"
+_DEFAULT_TRAINING = (
+    _SERVICE_ROOT / "acknowledge" / "crc_pre_enrollment_dialogue.md"
+)
+_FALLBACK_TRAINING = _SERVICE_ROOT / "acknowledge" / "crc_interview.md"
 _DEFAULT_OUT_DIR = _SERVICE_ROOT / "acknowledge" / "questions_pool"
 
 ITEM_KEYS = ("话题", "顾虑", "触发情境", "示例问法", "训练目标")
@@ -506,16 +510,21 @@ async def generate_concern_pool(
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="入组前患者顾虑池生成")
     p.add_argument(
+        "--study",
+        default=_DEFAULT_STUDY,
+        help=f"研究 stem（默认 {_DEFAULT_STUDY}）；决定默认 -b/-o",
+    )
+    p.add_argument(
         "--background",
         "-b",
-        default=str(_DEFAULT_BACKGROUND),
+        default=None,
         help="研究背景 JSON 路径",
     )
     p.add_argument(
         "--training",
         "-t",
-        default=str(_DEFAULT_TRAINING),
-        help="培训材料 Markdown 路径",
+        default=None,
+        help="培训材料 Markdown（默认 crc_pre_enrollment_dialogue.md）",
     )
     p.add_argument(
         "--output",
@@ -534,12 +543,29 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 
 
 async def _amain(argv: Iterable[str] | None = None) -> int:
+    _root = Path(__file__).resolve().parents[2]
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    from service.agent.study_paths import resolve_study, resolve_training
+
     parser = _build_arg_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
+    paths = resolve_study(args.study)
+    bg_path = Path(args.background) if args.background else paths.background
+    training_path = (
+        Path(args.training)
+        if args.training
+        else resolve_training(
+            _DEFAULT_TRAINING if _DEFAULT_TRAINING.is_file() else _FALLBACK_TRAINING
+        )
+    )
+    out_path = Path(args.output) if args.output else paths.concerns
 
     config = ConcernPoolConfig.from_env(
         trust_env=False if args.no_proxy else None,
@@ -550,20 +576,12 @@ async def _amain(argv: Iterable[str] | None = None) -> int:
         print(f"[FAIL] {exc}", file=sys.stderr)
         return 1
 
-    bg_path = Path(args.background)
-    training_path = Path(args.training)
     if not bg_path.is_file():
         print(f"[FAIL] 研究背景不存在: {bg_path}", file=sys.stderr)
         return 1
     if not training_path.is_file():
         print(f"[FAIL] 培训材料不存在: {training_path}", file=sys.stderr)
         return 1
-
-    out_path = (
-        Path(args.output)
-        if args.output
-        else default_output_path(bg_path, Path(args.out_dir))
-    )
 
     try:
         async with ConcernPoolAgent(config) as agent:

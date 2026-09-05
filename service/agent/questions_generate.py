@@ -1,5 +1,10 @@
 """火山方舟 — doubao-seed-character 情景扮演问题生成 Agent。
 
+【LEGACY】本模块为旧版「批量出题 / 下一句患者提问」路径。
+当前入组前训练主链路请用：
+  experiment_background → concern_pool → opening_question → patient_turn → evaluation
+  或：python service/agent/run_pipeline.py --study <stem> --stages prep
+
 模型详情：
 https://console.volcengine.com/ark/region:cn-beijing/model/detail?name=doubao-seed-character
 

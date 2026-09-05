@@ -1,0 +1,17 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "young_work",
+    "education": "low",
+    "trial_experience": "screen_failed_before",
+    "emotion_base": "eager",
+    "decision_role": "family_led",
+    "companion": "spouse",
+    "life_constraints": [
+      "long_distance"
+    ],
+    "pressure": "low",
+    "seed": 1587171593
+  },
+  "persona_text": "青年上班族，文化程度初中及以下，曾筛败过，情绪基调：急切求治，决策：家属主导决策，陪同：配偶陪同，约束：路途远，训练压力：低压力"
+}

@@ -1,0 +1,19 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "elder",
+    "education": "mid",
+    "trial_experience": "prior",
+    "emotion_base": "eager",
+    "decision_role": "self",
+    "companion": "alone",
+    "life_constraints": [
+      "chronic_comorbid",
+      "hard_to_leave_work",
+      "long_distance"
+    ],
+    "pressure": "mid",
+    "seed": 1871745697
+  },
+  "persona_text": "老年，文化程度高中大专，曾参加过临床试验，情绪基调：急切求治，决策：本人主导决策，陪同：独自沟通，约束：合并慢病、工作日难请假、路途远，训练压力：中压力"
+}
