@@ -1,0 +1,202 @@
+{
+  "source": "药物临床试验登记与信息公示平台",
+  "source_id": "62ed0e53515443bb854a6169c5f6d8b5",
+  "basic_info": {
+    "registration_no": "CTR20261435",
+    "status": "进行中",
+    "status_detail": "招募中",
+    "applicant_contact": "郏文青",
+    "first_public_date": "2026-04-20",
+    "applicant_name": "江苏恒瑞医药股份有限公司"
+  },
+  "title_and_background": {
+    "related_registration_nos": [],
+    "drug_name": "HRS-3005片",
+    "drug_type": "化学药物",
+    "clinical_application_no": "企业选择不公示",
+    "indication": "B细胞恶性肿瘤",
+    "scientific_title": "评价HRS-3005在B细胞恶性肿瘤患者中的安全性、耐受性、药代动力学及疗效的开放、多中心I期临床研究",
+    "public_title": "HRS-3005在B细胞恶性肿瘤患者中的I期临床研究",
+    "protocol_no": "HRS-3005-101",
+    "protocol_version": "1.2",
+    "protocol_version_date": "2026-05-20",
+    "combination_therapy": false
+  },
+  "applicant": {
+    "names": ["江苏恒瑞医药股份有限公司"],
+    "contact_name": "郏文青",
+    "contact_phone": "0518-82342973",
+    "contact_mobile": "",
+    "contact_email": "wenqing.jia@hengrui.com",
+    "contact_address": "湖北省-武汉市-江汉区青年路中海中心15楼",
+    "contact_postcode": "430021"
+  },
+  "clinical_trial": {
+    "purpose": {
+      "primary": [
+        "观察HRS-3005多次给药在B细胞恶性肿瘤参与者中的安全性和耐受性；确定最大耐受剂量（MTD，如可能）和II期临床研究推荐剂量（RP2D）。"
+      ],
+      "secondary": [
+        "评估HRS-3005在B细胞恶性肿瘤参与者中的药代动力学（PK）、药效学（PD）特征；",
+        "初步评估HRS-3005在B细胞恶性肿瘤参与者中的有效性。"
+      ]
+    },
+    "design": {
+      "category": "安全性和有效性",
+      "phase": "I期",
+      "design_type": "单臂试验",
+      "randomization": "非随机化",
+      "blinding": "开放",
+      "scope": "国内试验"
+    },
+    "subjects": {
+      "age": "18岁(最小年龄)至无上限(最大年龄)",
+      "sex": "男+女",
+      "healthy_volunteers": false,
+      "inclusion_criteria": [
+        "年龄≥18岁；",
+        "美国东部肿瘤协作组（ECOG）体能状态评分为0-1；",
+        "预期生存期≥12周；",
+        "经组织学或细胞学确诊复发/难治性B细胞恶性肿瘤",
+        "参与者必须有可测量的肿瘤病灶",
+        "适当的器官功能水平",
+        "有生育能力的女性参与者必须在筛选期进行血清妊娠试验，且结果为阴性；且必须为非哺乳期。有生育能力的女性参与者和伴侣为育龄妇女的男性参与者必须同意从签署知情同意书开始直到末次治疗结束后28天遵守避孕要求",
+        "患者自愿加入本研究，签署知情同意书，依从性好，配合随访"
+      ],
+      "exclusion_criteria": [
+        "肿瘤浸润中枢神经系统",
+        "首次研究药物给药前2年内存在本研究疾病以外的其他恶性肿瘤病史",
+        "首次研究药物给药前12周内接受过自体干细胞移植或CAR-T治疗",
+        "既往接受过异基因造血干细胞移植",
+        "筛选时乙肝表面抗原阳性，且HBV-DNA检测提示有病毒复制；",
+        "筛选时丙肝抗体阳性，且HCV-RNA检测提示有病毒复制；",
+        "筛选时人免疫缺陷病毒抗原/抗体检测阳性；",
+        "需要全身性治疗的活动性真菌、细菌和（或）病毒感染；",
+        "首次研究药物给药前28天内接受过重大手术或受重大创伤；",
+        "合并重要器官系统的严重疾病；",
+        "既往抗肿瘤治疗引起的不良反应未恢复至≤1级或稳定状态；",
+        "首次研究药物给药前抗肿瘤治疗未完成洗脱；",
+        "首次研究药物给药前14天内使用过CYP3A强诱导剂或中等强度诱导剂、CYP3A强效或中等强度抑制剂；",
+        "首次研究药物给药前28天内接种活疫苗；",
+        "持续的酒精或药物滥用；",
+        "首次研究药物给药前6个月内颅内出血；",
+        "正在接受维生素K拮抗剂或Xa因子抑制剂治疗；",
+        "有严重出血性疾病病史，例如凝血因子缺乏症或血管性血友病因子vWF缺乏症；",
+        "无法口服药物，或患有严重影响胃肠功能疾病，或接受过严重影响胃肠功能的手术；",
+        "妊娠或哺乳期女性；",
+        "同时参与其他治疗性临床研究，或签署知情同意书的时间距离前一项临床研究末次用药不足1个月。"
+      ]
+    },
+    "arms": {
+      "investigational_drugs": [
+        {
+          "index": 1,
+          "name_cn": "HRS-3005片",
+          "name_en": "HRS-3005 tablet",
+          "trade_name": "NA",
+          "dosage_form": "片剂",
+          "strength": "100mg/片或25mg/片",
+          "usage": "口服",
+          "duration": "用药直至达到方案规定的治疗结束标准"
+        }
+      ],
+      "control_drugs": []
+    },
+    "endpoints": {
+      "primary": [
+        {
+          "index": 1,
+          "measure": "不良事件（AE）的发生率及严重程度（基于NCI-CTCAE 6.0），异常实验室指标",
+          "time_frame": "整个研究过程",
+          "type": "安全性指标"
+        },
+        {
+          "index": 2,
+          "measure": "MTD和RP2D",
+          "time_frame": "首次给药后28天",
+          "type": "安全性指标"
+        }
+      ],
+      "secondary": [
+        {
+          "index": 1,
+          "measure": "PK指标",
+          "time_frame": "首次给药前30min至首次给药后12周",
+          "type": "安全性指标"
+        },
+        {
+          "index": 2,
+          "measure": "PD指标",
+          "time_frame": "首次给药前30min至首次给药后12周",
+          "type": "有效性指标"
+        },
+        {
+          "index": 3,
+          "measure": "初步疗效终点：客观缓解率（ORR）、至缓解时间（TTR）、缓解持续时间（DoR）、无进展生存期（PFS）、总生存期（OS）",
+          "time_frame": "整个研究过程",
+          "type": "有效性指标"
+        }
+      ]
+    },
+    "dmc": false,
+    "insurance": true
+  },
+  "investigators": {
+    "principal_investigators": [
+      {
+        "index": 1,
+        "name": "邱录贵",
+        "degree": "医学博士",
+        "title": "主任医师",
+        "phone": "022-23608108",
+        "email": "qiulg@ihcams.ac.cn",
+        "address": "天津市-天津市-静海区团泊大道28号",
+        "postcode": "301617",
+        "organization": "中国医学科学院血液病医院"
+      }
+    ],
+    "sites": [
+      {"index": 1, "organization": "中国医学科学院血液病医院", "investigator": "邱录贵", "country": "中国", "province": "天津市", "city": "天津市"},
+      {"index": 2, "organization": "天津市肿瘤医院", "investigator": "李兰芳", "country": "中国", "province": "天津市", "city": "天津市"},
+      {"index": 3, "organization": "河北医科大学第四医院", "investigator": "刘海生/王明霞", "country": "中国", "province": "河北省", "city": "石家庄市"},
+      {"index": 4, "organization": "中山大学附属肿瘤医院", "investigator": "蔡清清", "country": "中国", "province": "广东省", "city": "广州市"},
+      {"index": 5, "organization": "广西医科大学第一附属医院", "investigator": "罗军", "country": "中国", "province": "广西壮族自治区", "city": "南宁市"},
+      {"index": 6, "organization": "广西医科大学附属肿瘤医院", "investigator": "岑洪/谭晓虹", "country": "中国", "province": "广西壮族自治区", "city": "南宁市"},
+      {"index": 7, "organization": "苏州大学附属第一医院", "investigator": "金正明", "country": "中国", "province": "江苏省", "city": "苏州市"},
+      {"index": 8, "organization": "江苏省人民医院", "investigator": "范磊", "country": "中国", "province": "江苏省", "city": "南京市"},
+      {"index": 9, "organization": "哈尔滨医科大学附属肿瘤医院", "investigator": "赵丽娜", "country": "中国", "province": "黑龙江省", "city": "哈尔滨市"},
+      {"index": 10, "organization": "山东第一医科大学附属肿瘤医院", "investigator": "张燕/李增军", "country": "中国", "province": "山东省", "city": "济南市"},
+      {"index": 11, "organization": "安徽省肿瘤医院", "investigator": "丁凯阳", "country": "中国", "province": "安徽省", "city": "合肥市"},
+      {"index": 12, "organization": "四川大学华西医院", "investigator": "王婕/苗佳", "country": "中国", "province": "四川省", "city": "成都市"},
+      {"index": 13, "organization": "河南省肿瘤医院", "investigator": "周可树", "country": "中国", "province": "河南省", "city": "郑州市"},
+      {"index": 14, "organization": "郑州大学第一附属医院", "investigator": "张蕾", "country": "中国", "province": "河南省", "city": "郑州市"},
+      {"index": 15, "organization": "华中科技大学同济医学院附属同济医院", "investigator": "隗佳", "country": "中国", "province": "湖北省", "city": "武汉市"},
+      {"index": 16, "organization": "华中科技大学同济医学院附属协和医院", "investigator": "张利玲", "country": "中国", "province": "湖北省", "city": "武汉市"},
+      {"index": 17, "organization": "西安交通大学第一附属医院", "investigator": "贺鹏程", "country": "中国", "province": "陕西省", "city": "西安市"},
+      {"index": 18, "organization": "华中科技大学同济医学院附属协和医院", "investigator": "梅恒", "country": "中国", "province": "湖北省", "city": "武汉市"}
+    ]
+  },
+  "ethics_committees": [
+    {
+      "index": 1,
+      "name": "中国医学科学院血液病医院（中国医学科学院血液学研究所）伦理审查委员会",
+      "conclusion": "同意",
+      "approval_date": "2026-02-26"
+    },
+    {
+      "index": 2,
+      "name": "中国医学科学院血液病医院（中国医学科学院血液学研究所）伦理审查委员会",
+      "conclusion": "同意",
+      "approval_date": "2026-06-05"
+    }
+  ],
+  "recruitment": {
+    "target_enrollment": {"domestic": 190},
+    "enrolled": {"domestic": 1},
+    "actual_total_enrollment": null,
+    "first_informed_consent_date": {"domestic": "2026-05-20"},
+    "first_enrollment_date": {"domestic": "2026-06-03"},
+    "completion_date": null
+  },
+  "results_summary": []
+}

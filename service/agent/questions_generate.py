@@ -40,7 +40,7 @@ DEFAULT_MAX_TOKENS = 1024
 DEFAULT_TIMEOUT = 60.0
 
 _COMMON_QUESTIONS_PATH = (
-    Path(__file__).resolve().parents[1] / "acknowledge" / "common_questions.txt"
+    Path(__file__).resolve().parents[1] / "acknowledge" / "common_questions.md"
 )
 
 # 默认人设：临床试验知情沟通场景下的受试者
