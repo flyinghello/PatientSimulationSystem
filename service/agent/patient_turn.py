@@ -30,6 +30,8 @@ from typing import Any
 
 import httpx
 
+from service.agent.tts_emotion import resolve_patient_emotion
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
@@ -85,7 +87,7 @@ OUTPUT_SCHEMA_EXAMPLE = {
         "尚不清楚": ["中间要不要来医院随访"],
         "待核实事项": ["完整到院安排"],
         "已讨论清楚的话题": [],
-        "当前情绪": "有些犹豫",
+        "当前情绪": "中性",
         "参与态度": "愿意了解",
     },
     "动作": "结束",
@@ -332,6 +334,10 @@ def build_system_prompt(skill: str, *, max_turns: int = DEFAULT_MAX_TURNS) -> st
         "不能把患者刚提出的问题记录为已经理解。\n"
         "- 患者台词必须是新的一句，须回应该 CRC 刚说的内容；"
         "禁止原样或几乎原样重复上一句患者台词。\n"
+        "- 「当前情绪」必须与本轮患者台词语气一致，且只能是："
+        "开心/悲伤/生气/惊讶/恐惧/厌恶/激动/冷漠/中性；"
+        "犹豫追问不要标成恐惧，多数用中性或悲伤。"
+        "若 CRC 冷漠、敷衍或不尊重，必须标生气或厌恶，台词也要体现不满。\n"
         "- 退出条件（任一即可结束）：主要疑问讨论充分；需家属商量；"
         "关键安排待确认；暂不考虑；或达到轮数上限。\n"
         f"- 本会话患者发言轮数上限为 {max_turns}（含开局首句）；"
@@ -379,6 +385,7 @@ def build_user_prompt(
         f"【轮数提示】\n{limit_note}\n\n"
         "请输出更新后的 JSON（患者画像须与输入一致；含动作/是否结束/结束原因）。"
         "患者台词须承接 CRC 最新回答，禁止复读上一句患者台词。"
+        "若 CRC 最新回答冷漠、敷衍或不尊重，当前情绪须为生气或厌恶，台词体现不满。"
     )
 
 
@@ -525,6 +532,7 @@ def normalize_turn(
     raw_text: str = "",
     raw: dict[str, Any] | None = None,
     usage: dict[str, Any] | None = None,
+    crc_reply: str = "",
 ) -> TurnResult:
     """锁定画像；规整状态/动作/结束字段；格式校验失败则抛错。"""
     if force_end:
@@ -544,6 +552,18 @@ def normalize_turn(
     if not current and main:
         current = main[0]
 
+    action = str(data.get("动作", "") or "").strip()
+    ended = bool(data.get("是否结束", False))
+    end_reason = str(data.get("结束原因", "") or "").strip()
+    line = str(data.get("患者台词", "") or "").strip()
+
+    emotion = resolve_patient_emotion(
+        str(state_in.get("当前情绪") or ""),
+        line,
+        prev_label=str(prev.get("当前情绪") or "中性"),
+        crc_reply=crc_reply,
+    )
+
     state = {
         "主要顾虑": main,
         "当前话题": current,
@@ -551,18 +571,11 @@ def normalize_turn(
         "尚不清楚": _str_list(state_in.get("尚不清楚")),
         "待核实事项": _str_list(state_in.get("待核实事项")),
         "已讨论清楚的话题": _str_list(state_in.get("已讨论清楚的话题")),
-        "当前情绪": str(
-            state_in.get("当前情绪") or prev.get("当前情绪") or "有些犹豫"
-        ).strip(),
+        "当前情绪": emotion,
         "参与态度": str(
             state_in.get("参与态度") or prev.get("参与态度") or "愿意了解"
         ).strip(),
     }
-
-    action = str(data.get("动作", "") or "").strip()
-    ended = bool(data.get("是否结束", False))
-    end_reason = str(data.get("结束原因", "") or "").strip()
-    line = str(data.get("患者台词", "") or "").strip()
 
     if ended:
         action = "结束"
@@ -904,6 +917,7 @@ class PatientTurnAgent:
             raw_text=text,
             raw=raw,
             usage=usage,
+            crc_reply=crc_reply,
         )
 
         # 模型偶发原样复读上一句患者台词：强制重试一次
@@ -941,6 +955,7 @@ class PatientTurnAgent:
                 raw_text=text2,
                 raw=raw2,
                 usage=usage2,
+                crc_reply=crc_reply,
             )
 
         return result

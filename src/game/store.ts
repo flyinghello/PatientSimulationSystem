@@ -112,6 +112,7 @@ class Store {
     endConfirm: { sum: false, safe: false, ice: false },
     selectedCaseId: 'im-001',
     hasOnboarded: readOnboarded(),
+    dialogueBackend: 'crc',
     polyclinic: { clinic: DEFAULT_CLINIC, patient: null },
     lastEncounter: null,
     viewedEvalHistoryId: null,
@@ -133,6 +134,10 @@ class Store {
 
   // ── navigation ────────────────────────────────
   setScreen = (screen: Screen) => this.set({ screen });
+
+  /** Which dialogue stack the next encounter should use. */
+  setDialogueBackend = (dialogueBackend: GameState['dialogueBackend']) =>
+    this.set({ dialogueBackend });
 
   /** Open the debrief screen in review mode for a saved evaluation. */
   viewEvalHistory = (historyId: string) =>

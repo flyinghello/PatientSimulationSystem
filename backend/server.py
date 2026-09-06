@@ -65,12 +65,17 @@ ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    # CRC dialogue front (front/server.py)
+    "http://localhost:8790",
+    "http://127.0.0.1:8790",
 ]
 DEV_ORIGINS = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "http://localhost:8790",
+    "http://127.0.0.1:8790",
 }
 
 # Per-IP rate limit caps even authenticated abuse. SSE streams count as one
@@ -1407,6 +1412,9 @@ class VoiceTokenRequest(BaseModel):
     gender: str  # 'M' | 'F' — speaker gender (parent for pediatric)
     voiceId: Optional[str] = None  # explicit override
     identity: Optional[str] = None  # browser-side participant identity
+    # STT language for the LiveKit worker (e.g. "en", "zh"). CRC Chinese
+    # sessions pass "zh"; medkit ER defaults to English when omitted.
+    language: Optional[str] = None
 
 
 class VoiceTokenResponse(BaseModel):
@@ -1438,6 +1446,7 @@ async def voice_token(req: VoiceTokenRequest):
             "initialLine": req.initialLine,
             "voiceGender": req.gender,
             "voiceId": req.voiceId,
+            "language": (req.language or "en").lower(),
         }
     )
 

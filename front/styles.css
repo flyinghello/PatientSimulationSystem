@@ -53,6 +53,53 @@ body {
   letter-spacing: 0.02em;
 }
 
+.voice-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #eef5f7;
+}
+
+.voice-btn {
+  background: var(--crc);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  touch-action: none;
+}
+
+.voice-btn.live {
+  background: var(--accent);
+}
+
+.voice-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.voice-status {
+  font-size: 0.9rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.voice-status.live {
+  color: #1f6b45;
+}
+
+.voice-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;

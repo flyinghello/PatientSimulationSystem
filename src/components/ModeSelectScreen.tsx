@@ -205,7 +205,10 @@ export function ModeSelectScreen() {
             doorColor="#5FCFA0"
             available
             tags={['核心场景', '角色卡选择', '依从性·不良事件·合并用药·日记核对']}
-            onOpen={() => store.setScreen('library')}
+            onOpen={() => {
+              store.setDialogueBackend('crc');
+              store.setScreen('library');
+            }}
           />
           <Door
             label="旧项目 · ER / 全科"
@@ -214,7 +217,10 @@ export function ModeSelectScreen() {
             doorColor="#5AB7F2"
             available
             tags={['原项目', '自由漫游', '全部病例可选']}
-            onOpen={() => store.setScreen('gpRoom')}
+            onOpen={() => {
+              store.setDialogueBackend('livekit');
+              store.setScreen('gpRoom');
+            }}
           />
           <Door
             label="更多试验场景"

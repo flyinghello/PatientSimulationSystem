@@ -1,0 +1,19 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "elder",
+    "education": "mid",
+    "trial_experience": "prior",
+    "emotion_base": "pragmatic",
+    "decision_role": "family_led",
+    "companion": "alone",
+    "life_constraints": [
+      "long_distance",
+      "hard_to_leave_work",
+      "chronic_comorbid"
+    ],
+    "pressure": "high",
+    "seed": 108898461
+  },
+  "persona_text": "老年，文化程度高中大专，曾参加过临床试验，情绪基调：务实（偏费用/流程），决策：家属主导决策，陪同：独自沟通，约束：路途远、工作日难请假、合并慢病，训练压力：高压力"
+}

@@ -48,12 +48,37 @@ VOICE_IDS = {
     ],
 }
 
+# Chinese Cartesia voices for CRC (language=zh) rooms.
+ZH_VOICE_IDS = {
+    "M": [
+        "eda5bbff-1ff1-4886-8ef1-4e69a77640a0",  # Chinese Commercial Man
+        "3a63e2d1-1c1e-425d-8e79-5100bc910e90",  # Chinese Call Center Man
+    ],
+    "F": [
+        "e90c6678-f0d3-4767-9883-5d0ecf5894a8",  # Chinese Female Conversational
+        "0b904166-a29f-4d2e-bb20-41ca302f98e9",  # Chinese Commercial Woman
+    ],
+}
+
 DEFAULT_VOICE = VOICE_IDS["M"][0]
 DEFAULT_INSTRUCTIONS = (
     "You are a patient speaking to a doctor. Keep replies to 1-2 short spoken "
     "sentences. Output spoken dialogue only — no stage directions, no asterisks."
 )
 DEFAULT_INITIAL = "Hi doc."
+
+FAREWELLS_EN = [
+    "Thank you, doctor. Take care.",
+    "Okay, thanks doc. Goodbye.",
+    "Thanks for your help. Bye.",
+    "Alright, take care. Goodbye.",
+]
+FAREWELLS_ZH = [
+    "好的，谢谢您，再见。",
+    "那我先这样，有消息再联系您。",
+    "谢谢，我再考虑一下，再见。",
+    "好的，麻烦您了，再见。",
+]
 
 
 def _hash_str(s: str) -> int:
@@ -66,8 +91,12 @@ def _hash_str(s: str) -> int:
     return h
 
 
-def pick_voice(case_id: str, gender: str) -> str:
-    pool = VOICE_IDS.get(gender.upper()) or VOICE_IDS["M"]
+def pick_voice(case_id: str, gender: str, *, language: str = "en") -> str:
+    g = gender.upper()
+    if language.startswith("zh"):
+        pool = ZH_VOICE_IDS.get(g) or ZH_VOICE_IDS["F"]
+    else:
+        pool = VOICE_IDS.get(g) or VOICE_IDS["M"]
     return pool[_hash_str(case_id) % len(pool)]
 
 
@@ -89,16 +118,24 @@ async def entrypoint(ctx: agents.JobContext):
     speaker_gender = (meta.get("voiceGender") or meta.get("gender") or "M").upper()
     system_prompt = meta.get("systemPrompt") or DEFAULT_INSTRUCTIONS
     initial_line = meta.get("initialLine") or DEFAULT_INITIAL
+    # Deepgram language code. CRC Chinese rooms pass "zh"; default English.
+    language = (meta.get("language") or "en").lower()
+    if language.startswith("zh"):
+        dg_language = "zh"
+    else:
+        dg_language = "en"
 
-    voice_id = meta.get("voiceId") or pick_voice(case_id, speaker_gender)
+    voice_id = meta.get("voiceId") or pick_voice(
+        case_id, speaker_gender, language=dg_language
+    )
 
     logger.info(
-        "joining room=%s case=%s gender=%s voice=%s",
-        ctx.room.name, case_id, speaker_gender, voice_id,
+        "joining room=%s case=%s gender=%s voice=%s lang=%s",
+        ctx.room.name, case_id, speaker_gender, voice_id, dg_language,
     )
 
     session = AgentSession(
-        stt=deepgram.STT(model="nova-3", language="en"),
+        stt=deepgram.STT(model="nova-3", language=dg_language),
         llm=anthropic.LLM(model="claude-haiku-4-5-20251001", temperature=0.8),
         tts=cartesia.TTS(model="sonic-2", voice=voice_id),
         vad=silero.VAD.load(),
@@ -117,13 +154,8 @@ async def entrypoint(ctx: agents.JobContext):
     # session.say (direct TTS — no LLM round-trip) so the patient actually
     # says goodbye before the room is torn down. Without this the audio
     # cuts mid-sentence on dispatch.
-    FAREWELLS = [
-        "Thank you, doctor. Take care.",
-        "Okay, thanks doc. Goodbye.",
-        "Thanks for your help. Bye.",
-        "Alright, take care. Goodbye.",
-    ]
-    farewell_pick = FAREWELLS[_hash_str(case_id) % len(FAREWELLS)]
+    farewells = FAREWELLS_ZH if dg_language.startswith("zh") else FAREWELLS_EN
+    farewell_pick = farewells[_hash_str(case_id) % len(farewells)]
 
     # RPC method invoked by the doctor's browser when they click "Dispatch".
     # Speaks ONE short goodbye via direct TTS so the patient actually says
@@ -140,13 +172,18 @@ async def entrypoint(ctx: agents.JobContext):
         return "ok"
 
     # Patient blurts their chief complaint as soon as the doctor walks up.
-    await session.generate_reply(
-        instructions=(
+    if dg_language.startswith("zh"):
+        open_instr = (
+            f'严格保持角色。用中文自然说出这句开场白（患者或陪同家属），'
+            f'只说这一句短话：\"{initial_line}\"'
+        )
+    else:
+        open_instr = (
             f'Stay strictly in character. Speak this opening line, naturally, '
             f'as the patient (or accompanying parent for pediatric cases) '
             f'arriving in the room: "{initial_line}". One short sentence only.'
-        ),
-    )
+        )
+    await session.generate_reply(instructions=open_instr)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,26 @@
+Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+
+Traceback (most recent call last):
+  File "E:\AI_creation\PatientSimulationSystem\front\server.py", line 472, in <module>
+    @app.post("/api/sessions/{session_id}/voice/turn")
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\anaconda\Lib\site-packages\fastapi\routing.py", line 704, in decorator
+    self.add_api_route(
+  File "D:\anaconda\Lib\site-packages\fastapi\routing.py", line 643, in add_api_route
+    route = route_class(
+            ^^^^^^^^^^^^
+  File "D:\anaconda\Lib\site-packages\fastapi\routing.py", line 495, in __init__
+    self.body_field = get_body_field(dependant=self.dependant, name=self.unique_id)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\anaconda\Lib\site-packages\fastapi\dependencies\utils.py", line 801, in get_body_field
+    check_file_field(final_field)
+  File "D:\anaconda\Lib\site-packages\fastapi\dependencies\utils.py", line 100, in check_file_field
+    raise RuntimeError(multipart_not_installed_error) from None
+RuntimeError: Form data requires "python-multipart" to be installed. 
+You can install "python-multipart" with: 
+
+pip install python-multipart
+

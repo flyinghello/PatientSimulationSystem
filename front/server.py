@@ -3,19 +3,23 @@
 启动：
   python front/server.py
   浏览器打开 http://127.0.0.1:8790
+
+语音：火山引擎 ASR + CRC PatientTurnAgent + 火山 TTS（不依赖 LiveKit）。
+密钥在项目根目录 .env：VOLC_API_KEY、TEXT_GENERATION_API_KEY。
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -23,6 +27,13 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+# 加载项目根 .env（VOLC_API_KEY / TEXT_GENERATION_API_KEY）
+from config import setting as _cfg  # noqa: E402, F401
+
+from service.agent.ark_recognize import (  # noqa: E402
+    ASRConfig,
+    recognize_bytes,
+)
 from service.agent.evaluation import (  # noqa: E402
     EvalConfig,
     EvaluationAgent,
@@ -40,6 +51,14 @@ from service.agent.patient_turn import (  # noqa: E402
 )
 from service.agent.personality import sample_persona  # noqa: E402
 from service.agent.study_paths import resolve_study  # noqa: E402
+from service.agent.tts_generate import (  # noqa: E402
+    BidirectionalTTSAgent,
+    TTSConfig,
+)
+from service.agent.tts_emotion import (  # noqa: E402
+    DEFAULT_SPEAKER,
+    emotion_from_session_state,
+)
 
 FRONT_DIR = Path(__file__).resolve().parent
 SESSIONS_BASE = _ROOT / "service" / "acknowledge" / "dialogue_sessions"
@@ -62,6 +81,14 @@ class ReplyBody(BaseModel):
     message: str = Field(..., min_length=1)
 
 
+class TtsBody(BaseModel):
+    text: str = Field(..., min_length=1)
+    emotion: str | None = None
+    emotion_scale: int | None = Field(default=None, ge=1, le=5)
+    # If emotion omitted, resolve from this session's 状态.当前情绪
+    session_id: str | None = None
+
+
 def _list_ready_studies() -> list[dict[str, Any]]:
     opening_dir = _ROOT / "service" / "acknowledge" / "opening_state"
     if not opening_dir.is_dir():
@@ -76,7 +103,6 @@ def _list_ready_studies() -> list[dict[str, Any]]:
             and (p.is_file() or (paths.background.is_file() and paths.concerns.is_file()))
         )
         items.append({"stem": stem, "label": stem, "ready": ready})
-    # Also include studies that have bg+concerns but no opening (random persona can generate)
     for stem in {
         p.name[: -len(".background.json")]
         for p in (_ROOT / "service" / "acknowledge" / "relative_experiment").glob(
@@ -166,6 +192,12 @@ def _session_payload(
         except Exception:  # noqa: BLE001
             evaluation = None
 
+    emo, emo_scale = emotion_from_session_state(
+        session.state,
+        session.portrait,
+        speaker=DEFAULT_SPEAKER,
+        line=patient_line,
+    )
     return {
         "session_id": session.root.name,
         "study": session.study_stem,
@@ -177,6 +209,8 @@ def _session_payload(
         "persona": persona,
         "persona_text": persona_text,
         "evaluation": evaluation,
+        "tts_emotion": emo,
+        "tts_emotion_scale": emo_scale,
         "messages": [
             {"role": m["role"], "content": m["content"]} for m in session.dialogue
         ],
@@ -254,6 +288,84 @@ async def _run_evaluation(session: DialogueSession) -> dict[str, Any]:
     payload = report.to_dict()
     save_json(session.root / "evaluation.json", payload)
     return payload
+
+
+def _guess_upload_format(filename: str | None, content_type: str | None) -> str:
+    name = (filename or "").lower()
+    ctype = (content_type or "").lower()
+    for ext in ("wav", "mp3", "ogg", "pcm", "webm"):
+        if name.endswith(f".{ext}") or ext in ctype:
+            if ext == "webm":
+                return "ogg"
+            return ext
+    return "wav"
+
+
+def _resolve_tts_emotion(
+    *,
+    emotion: str | None = None,
+    emotion_scale: int | None = None,
+    session_id: str | None = None,
+    session: DialogueSession | None = None,
+    speaker: str | None = None,
+) -> tuple[str, int]:
+    """Prefer explicit emotion; else map from session 当前情绪。Always clamp to speaker enum."""
+    from service.agent.tts_emotion import (
+        DEFAULT_EMOTION_SCALE,
+        DEFAULT_SPEAKER,
+        clamp_emotion,
+        emotion_from_session_state,
+    )
+
+    sp = speaker or DEFAULT_SPEAKER
+    if emotion:
+        emo = clamp_emotion(emotion, speaker=sp)
+        scale = emotion_scale if emotion_scale is not None else DEFAULT_EMOTION_SCALE
+        return emo, max(1, min(5, int(scale)))
+    sess = session
+    if sess is None and session_id:
+        try:
+            sess = _load_session(session_id)
+        except Exception:  # noqa: BLE001
+            sess = None
+    if sess is not None:
+        emo, scale = emotion_from_session_state(
+            sess.state,
+            sess.portrait,
+            speaker=sp,
+            line=sess.last_line,
+        )
+        if emotion_scale is not None:
+            scale = emotion_scale
+        return emo, max(1, min(5, int(scale)))
+    return clamp_emotion(None, speaker=sp), DEFAULT_EMOTION_SCALE
+
+
+async def _synthesize_mp3(
+    text: str,
+    *,
+    emotion: str | None = None,
+    emotion_scale: int | None = None,
+    session_id: str | None = None,
+    session: DialogueSession | None = None,
+) -> bytes:
+    text = text.strip()
+    if not text:
+        raise ValueError("TTS 文本为空")
+    cfg = TTSConfig.from_env()
+    emo, scale = _resolve_tts_emotion(
+        emotion=emotion,
+        emotion_scale=emotion_scale,
+        session_id=session_id,
+        session=session,
+        speaker=cfg.speaker,
+    )
+    cfg.emotion = emo
+    cfg.emotion_scale = scale
+    if not (cfg.api_key or (cfg.app_id and cfg.access_key)):
+        raise ValueError("缺少 VOLC_API_KEY（项目根目录 .env）")
+    async with BidirectionalTTSAgent(cfg) as agent:
+        return await agent.synthesize_to_bytes(text)
 
 
 @app.get("/api/studies")
@@ -405,6 +517,119 @@ async def evaluate_session(session_id: str) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     return _session_payload(session, evaluation=evaluation)
+
+
+@app.post("/api/tts")
+async def tts(body: TtsBody) -> dict[str, Any]:
+    """火山 TTS：文本 → base64 mp3（用于朗读患者台词）。"""
+    try:
+        audio = await _synthesize_mp3(
+            body.text,
+            emotion=body.emotion,
+            emotion_scale=body.emotion_scale,
+            session_id=body.session_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"TTS 失败: {exc}") from exc
+    cfg = TTSConfig.from_env()
+    emo, scale = _resolve_tts_emotion(
+        emotion=body.emotion,
+        emotion_scale=body.emotion_scale,
+        session_id=body.session_id,
+        speaker=cfg.speaker,
+    )
+    return {
+        "format": "mp3",
+        "audio_base64": base64.b64encode(audio).decode("ascii"),
+        "tts_emotion": emo,
+        "tts_emotion_scale": scale,
+    }
+
+
+@app.post("/api/tts/raw")
+async def tts_raw(body: TtsBody) -> Response:
+    try:
+        audio = await _synthesize_mp3(
+            body.text,
+            emotion=body.emotion,
+            emotion_scale=body.emotion_scale,
+            session_id=body.session_id,
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"TTS 失败: {exc}") from exc
+    return Response(content=audio, media_type="audio/mpeg")
+
+
+@app.post("/api/sessions/{session_id}/voice/turn")
+async def voice_turn(
+    session_id: str,
+    audio: UploadFile = File(...),
+) -> dict[str, Any]:
+    """按住说话一轮：火山 ASR → PatientTurnAgent → 火山 TTS。"""
+    session = _load_session(session_id)
+    if session.ended:
+        raise HTTPException(status_code=400, detail="会话已结束")
+
+    raw = await audio.read()
+    if not raw or len(raw) < 256:
+        raise HTTPException(status_code=400, detail="音频太短或为空")
+
+    fmt = _guess_upload_format(audio.filename, audio.content_type)
+    asr_cfg = ASRConfig.from_env(audio_format=fmt)
+    try:
+        asr = await recognize_bytes(raw, config=asr_cfg)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"ASR 失败: {exc}") from exc
+
+    crc_text = (asr.text or "").strip()
+    if not crc_text:
+        raise HTTPException(status_code=400, detail="未识别到有效语音，请再说一遍")
+
+    pcfg = PatientTurnConfig.from_env(trust_env=False)
+    try:
+        pcfg.require_api_key()
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    try:
+        async with PatientTurnAgent(pcfg) as agent:
+            result = await agent.apply_crc_reply(session, crc_text)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    patient_line = result.line or session.last_line
+    audio_b64 = ""
+    tts_error = ""
+    try:
+        mp3 = await _synthesize_mp3(patient_line, session=session)
+        audio_b64 = base64.b64encode(mp3).decode("ascii")
+    except Exception as exc:  # noqa: BLE001
+        tts_error = str(exc)
+
+    evaluation: dict[str, Any] | None = None
+    if result.ended:
+        try:
+            evaluation = await _run_evaluation(session)
+        except Exception as exc:  # noqa: BLE001
+            evaluation = {
+                "error": str(exc),
+                "summary": "自动评分失败，可稍后重试",
+                "overall_score": None,
+                "passed": False,
+                "dimensions": [],
+            }
+
+    payload = _session_payload(
+        session,
+        detail=result.to_dict(),
+        evaluation=evaluation,
+    )
+    payload["crc_text"] = crc_text
+    payload["audio_format"] = "mp3"
+    payload["audio_base64"] = audio_b64
+    if tts_error:
+        payload["tts_error"] = tts_error
+    return payload
 
 
 @app.get("/")

@@ -22,9 +22,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from config import setting  # noqa: E402  # 触发 load_dotenv
+from service.agent.tts_emotion import DEFAULT_SPEAKER as EMO_SPEAKER  # noqa: E402
 from service.agent.tts_generate import BidirectionalTTSAgent, TTSConfig  # noqa: E402
-
-EMO_SPEAKER = "zh_female_shuangkuaisisi_emo_v2_mars_bigtts"
 
 
 async def run_once(

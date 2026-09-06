@@ -27,12 +27,20 @@
       <main class="chat-panel">
         <div id="meta" class="meta">选择研究后点击「开始对话」或「随机人设开局」</div>
         <div id="personaBar" class="persona-bar" hidden></div>
+        <div id="voiceBar" class="voice-bar" hidden>
+          <button id="speakOpeningBtn" type="button" class="secondary">
+            朗读开场
+          </button>
+          <button id="pttBtn" type="button" class="voice-btn">按住说话</button>
+          <span id="voiceStatus" class="voice-status">火山语音待命</span>
+          <span class="voice-hint">ASR/TTS 用根目录 .env 的 VOLC_API_KEY</span>
+        </div>
         <div id="messages" class="messages" aria-live="polite"></div>
         <form id="replyForm" class="composer" hidden>
           <textarea
             id="crcInput"
             rows="3"
-            placeholder="输入 CRC 回答…"
+            placeholder="输入 CRC 回答，或按住上方按钮说话…"
             required
           ></textarea>
           <button type="submit" id="sendBtn">发送</button>

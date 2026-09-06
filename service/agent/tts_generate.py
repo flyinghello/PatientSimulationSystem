@@ -36,12 +36,12 @@ logger = logging.getLogger(__name__)
 # 连接与语气配置（语气改这里；密钥请写在项目根目录 .env）
 # ===========================================================================
 TTS_ENDPOINT = "wss://openspeech.bytedance.com/api/v3/tts/bidirection"
-DEFAULT_SPEAKER = "zh_female_shuangkuaisisi_emo_v2_mars_bigtts"  # 多情感音色，支持 emotion
+DEFAULT_SPEAKER = "zh_female_gaolengyujie_emo_v2_mars_bigtts"  # 高冷御姐（多情感，含 fear/hate）
 DEFAULT_RESOURCE_ID = "seed-tts-1.0"  # 2.0 音色请改为 seed-tts-2.0
 
 # 语气 / 情感：部分音色支持，如 happy / sad / angry / surprised / fear /
 # hate / excited / coldness / neutral 等；不需要时设为 None
-DEFAULT_EMOTION: str | None = "sad"
+DEFAULT_EMOTION: str | None = "neutral"  # 须为当前音色支持的官方枚举
 # 情绪强度 1~5，越大越明显；仅在设置了 DEFAULT_EMOTION 时生效
 DEFAULT_EMOTION_SCALE: int = 4
 # 语速 [-50, 100]：0 原速，100≈2 倍，-50≈0.5 倍
@@ -310,8 +310,13 @@ class TTSConfig:
             "loudness_rate": self.loudness_rate,
         }
         if self.emotion:
-            audio_params["emotion"] = self.emotion
-            audio_params["emotion_scale"] = self.emotion_scale
+            # emotion 必须是当前音色支持的官方枚举；非法值会导致合成失败或被忽略
+            from service.agent.tts_emotion import clamp_emotion
+
+            audio_params["emotion"] = clamp_emotion(
+                self.emotion, speaker=self.speaker
+            )
+            audio_params["emotion_scale"] = max(1, min(5, int(self.emotion_scale)))
 
         req_params: dict[str, Any] = {
             "speaker": self.speaker,

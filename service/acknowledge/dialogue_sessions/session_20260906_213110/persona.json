@@ -1,0 +1,15 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "elder",
+    "education": "high",
+    "trial_experience": "prior",
+    "emotion_base": "eager",
+    "decision_role": "self",
+    "companion": "alone",
+    "life_constraints": [],
+    "pressure": "low",
+    "seed": 1804200042
+  },
+  "persona_text": "老年，文化程度本科及以上，曾参加过临床试验，情绪基调：急切求治，决策：本人主导决策，陪同：独自沟通，约束：无明显额外生活约束，训练压力：低压力"
+}
