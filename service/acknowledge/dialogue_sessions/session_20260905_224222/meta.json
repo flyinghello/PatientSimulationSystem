@@ -1,0 +1,9 @@
+{
+  "updated_at": "2026-09-05T22:44:32",
+  "turns": 5,
+  "ended": false,
+  "study_stem": "B-cell malignancies",
+  "background_path": "E:\\AI_creation\\PatientSimulationSystem\\service\\acknowledge\\relative_experiment\\B-cell malignancies.background.json",
+  "concerns_path": "E:\\AI_creation\\PatientSimulationSystem\\service\\acknowledge\\questions_pool\\B-cell malignancies.concerns.json",
+  "opening_path": "(generated)"
+}

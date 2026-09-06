@@ -1,0 +1,18 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "young_work",
+    "education": "mid",
+    "trial_experience": "screen_failed_before",
+    "emotion_base": "hesitant",
+    "decision_role": "self_vs_family",
+    "companion": "spouse",
+    "life_constraints": [
+      "money_sensitive",
+      "hard_to_leave_work"
+    ],
+    "pressure": "mid",
+    "seed": 853384736
+  },
+  "persona_text": "青年上班族，文化程度高中大专，曾筛败过，情绪基调：犹豫，决策：本人想参加但家属反对，陪同：配偶陪同，约束：经济敏感、工作日难请假，训练压力：中压力"
+}

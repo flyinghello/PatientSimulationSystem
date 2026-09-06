@@ -1,0 +1,19 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "elder",
+    "education": "low",
+    "trial_experience": "screen_failed_before",
+    "emotion_base": "pragmatic",
+    "decision_role": "self_vs_family",
+    "companion": "adult_child",
+    "life_constraints": [
+      "chronic_comorbid",
+      "long_distance",
+      "hard_to_leave_work"
+    ],
+    "pressure": "low",
+    "seed": 929662866
+  },
+  "persona_text": "老年，文化程度初中及以下，曾筛败过，情绪基调：务实（偏费用/流程），决策：本人想参加但家属反对，陪同：成年子女陪同，约束：合并慢病、路途远、工作日难请假，训练压力：低压力"
+}

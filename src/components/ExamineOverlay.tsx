@@ -967,13 +967,17 @@ function DiagnoseTab({
   );
 }
 
-// ── Chat tab — live voice transcript ─────────────────────────────
+// ── Chat tab — live transcript + CRC text composer ───────────────
 
 function ChatTab({ patientName }: { patientName: string }) {
+  const game = useGameState();
+  const isCrc = game.dialogueBackend === 'crc';
   const [messages, setMessages] = useState<ReadonlyArray<ChatMessage>>(() => {
     const conv = getExistingConversation(POLYCLINIC_BED_INDEX);
     return conv ? conv.getMessages() : [];
   });
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Subscribe to live message updates so the chat history updates while
@@ -993,65 +997,124 @@ function ChatTab({ patientName }: { patientName: string }) {
     el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  const send = async () => {
+    const text = draft.trim();
+    if (!text || sending) return;
+    const conv = getExistingConversation(POLYCLINIC_BED_INDEX);
+    if (!conv) return;
+    setSending(true);
+    setDraft('');
+    try {
+      await conv.sendTextMessage(text, { speak: true });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSending(false);
+    }
+  };
+
   // Skip the system seed message (role: 'system') if any leak through.
   const visible = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
 
-  if (visible.length === 0) {
-    return (
-      <div className="plush" style={{ padding: 14, fontWeight: 700, color: 'var(--ink-2)' }}>
-        暂无对话记录。当你与{patientName.split(' ')[0]}交谈时，文字记录会显示在此处 ——
-        并在问诊过程中实时更新。
-      </div>
-    );
-  }
-
   return (
-    <div
-      ref={scrollRef}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        maxHeight: 380,
-        overflowY: 'auto',
-        paddingRight: 6,
-      }}
-    >
-      {visible.map((m, i) => {
-        const mine = m.role === 'user';
-        return (
-          <div
-            key={i}
-            style={{
-              alignSelf: mine ? 'flex-end' : 'flex-start',
-              maxWidth: '78%',
-              background: mine ? 'var(--sky)' : 'white',
-              border: '3px solid var(--line)',
-              borderRadius:
-                mine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-              padding: '10px 14px',
-              boxShadow: 'var(--plush-tiny)',
-              fontSize: 13,
-              fontWeight: 600,
-              lineHeight: 1.4,
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {visible.length === 0 ? (
+        <div className="plush" style={{ padding: 14, fontWeight: 700, color: 'var(--ink-2)' }}>
+          {isCrc
+            ? `CRC 模式：在下方输入你对${patientName.split(' ')[0]}说的话，患者会按入组前沟通逻辑回复并朗读。`
+            : `暂无对话记录。当你与${patientName.split(' ')[0]}交谈时，文字记录会显示在此处。`}
+        </div>
+      ) : (
+        <div
+          ref={scrollRef}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            maxHeight: 300,
+            overflowY: 'auto',
+            paddingRight: 6,
+          }}
+        >
+          {visible.map((m, i) => {
+            const mine = m.role === 'user';
+            return (
+              <div
+                key={i}
+                style={{
+                  alignSelf: mine ? 'flex-end' : 'flex-start',
+                  maxWidth: '78%',
+                  background: mine ? 'var(--sky)' : 'white',
+                  border: '3px solid var(--line)',
+                  borderRadius:
+                    mine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                  padding: '10px 14px',
+                  boxShadow: 'var(--plush-tiny)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  lineHeight: 1.4,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: 'var(--ink-2)',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    marginBottom: 2,
+                  }}
+                >
+                  {mine ? (isCrc ? 'CRC' : '你') : patientName.split(' ')[0]}
+                </div>
+                {m.content}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isCrc && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void send();
+          }}
+          style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}
+        >
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={2}
+            placeholder="输入 CRC 回答，回车发送…"
+            disabled={sending}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
             }}
+            style={{
+              flex: 1,
+              resize: 'vertical',
+              border: '3px solid var(--line)',
+              borderRadius: 12,
+              padding: '8px 10px',
+              font: 'inherit',
+              fontWeight: 600,
+              fontSize: 13,
+            }}
+          />
+          <button
+            type="submit"
+            className="btn"
+            disabled={sending || !draft.trim()}
+            style={{ whiteSpace: 'nowrap' }}
           >
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 800,
-                color: 'var(--ink-2)',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                marginBottom: 2,
-              }}
-            >
-              {mine ? '你' : patientName.split(' ')[0]}
-            </div>
-            {m.content}
-          </div>
-        );
-      })}
+            {sending ? '…' : '发送'}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

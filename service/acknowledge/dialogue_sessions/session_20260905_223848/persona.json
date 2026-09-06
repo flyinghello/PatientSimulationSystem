@@ -1,0 +1,17 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "young_work",
+    "education": "high",
+    "trial_experience": "screen_failed_before",
+    "emotion_base": "pragmatic",
+    "decision_role": "family_led",
+    "companion": "adult_child",
+    "life_constraints": [
+      "chronic_comorbid"
+    ],
+    "pressure": "high",
+    "seed": 1474060936
+  },
+  "persona_text": "青年上班族，文化程度本科及以上，曾筛败过，情绪基调：务实（偏费用/流程），决策：家属主导决策，陪同：成年子女陪同，约束：合并慢病，训练压力：高压力"
+}

@@ -1,0 +1,86 @@
+{
+  "overall_score": 57.1,
+  "passed": false,
+  "summary": "CRC在沟通准备、态度及合规性方面均存在不足，未充分体现核心原则。",
+  "dimensions": [
+    {
+      "category": "沟通准备",
+      "dimension": "信息传递",
+      "score": 60.0,
+      "passed": false,
+      "evidence": "患者询问参加研究要多久，CRC告知如果满足入组标准最快第二天就可以参与，患者询问来医院次数及每次时间，CRC告知一周一次，未明确每次时长，后告知大概6小时，患者询问六小时内做什么，CRC告知抽血和功能三项，未详细说明。",
+      "suggestion": "对于患者询问的时间和流程等问题，应给予更详细准确的回答。"
+    },
+    {
+      "category": "沟通准备",
+      "dimension": "知情同意",
+      "score": 60.0,
+      "passed": false,
+      "evidence": "对话中未明确体现协助研究者确保受试者充分理解知情同意书的内容。",
+      "suggestion": "应主动向患者说明知情同意书的相关内容，确保患者充分理解。"
+    },
+    {
+      "category": "沟通准备",
+      "dimension": "个性化适配",
+      "score": 60.0,
+      "passed": false,
+      "evidence": "对话中未体现根据患者病情、文化水平、理解力调整沟通方式。",
+      "suggestion": "可进一步了解患者情况，调整沟通方式。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "耐心程度",
+      "score": 40.0,
+      "passed": false,
+      "evidence": "患者多次询问时间和流程等问题，CRC表现出不耐烦，如“问那么多干嘛，到时候叫你来你就来就可以了”。",
+      "suggestion": "保持耐心，认真回答患者的每一个问题。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "共情能力",
+      "score": 40.0,
+      "passed": false,
+      "evidence": "CRC未站在患者角度思考，未理解患者想提前了解情况以便安排时间的需求。",
+      "suggestion": "多从患者角度出发，理解患者的困难和需求。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "尊重程度",
+      "score": 40.0,
+      "passed": false,
+      "evidence": "CRC不尊重患者的询问，未认真对待患者的问题。",
+      "suggestion": "尊重患者的知情权，认真回答患者问题。"
+    },
+    {
+      "category": "合规性",
+      "dimension": "知情沟通合规",
+      "score": 60.0,
+      "passed": false,
+      "evidence": "对话中未出现不夸大疗效、不隐瞒风险等不合规情况。",
+      "suggestion": "继续保持合规沟通。"
+    }
+  ],
+  "principles": {
+    "以患者为中心": "未充分体现，CRC未围绕患者理解与舒适展开沟通，对患者的问题回答不耐心、不全面。",
+    "双向尊重": "未充分体现，CRC对患者的询问不够尊重。",
+    "持续耐心": "未充分体现，CRC在沟通中表现出不耐烦。"
+  },
+  "strengths": [
+    "在沟通中未出现不夸大疗效、不隐瞒风险等不合规情况。"
+  ],
+  "improvements": [
+    "提高沟通的耐心程度，站在患者角度思考问题，尊重患者的询问，对患者的问题给予详细准确的回答。"
+  ],
+  "raw_text": "{\"overall_score\": 57.1, \"passed\": false, \"summary\": \"CRC在沟通准备、态度及合规性方面均存在不足，未充分体现核心原则。\", \"dimensions\": [{\"category\": \"沟通准备\", \"dimension\": \"信息传递\", \"score\": 60, \"passed\": true, \"evidence\": \"患者询问参加研究要多久，CRC告知如果满足入组标准最快第二天就可以参与，患者询问来医院次数及每次时间，CRC告知一周一次，未明确每次时长，后告知大概6小时，患者询问六小时内做什么，CRC告知抽血和功能三项，未详细说明。\", \"suggestion\": \"对于患者询问的时间和流程等问题，应给予更详细准确的回答。\"}, {\"category\": \"沟通准备\", \"dimension\": \"知情同意\", \"score\": 60, \"passed\": true, \"evidence\": \"对话中未明确体现协助研究者确保受试者充分理解知情同意书的内容。\", \"suggestion\": \"应主动向患者说明知情同意书的相关内容，确保患者充分理解。\"}, {\"category\": \"沟通准备\", \"dimension\": \"个性化适配\", \"score\": 60, \"passed\": true, \"evidence\": \"对话中未体现根据患者病情、文化水平、理解力调整沟通方式。\", \"suggestion\": \"可进一步了解患者情况，调整沟通方式。\"}, {\"category\": \"沟通态度\", \"dimension\": \"耐心程度\", \"score\": 40, \"passed\": false, \"evidence\": \"患者多次询问时间和流程等问题，CRC表现出不耐烦，如“问那么多干嘛，到时候叫你来你就来就可以了”。\", \"suggestion\": \"保持耐心，认真回答患者的每一个问题。\"}, {\"category\": \"沟通态度\", \"dimension\": \"共情能力\", \"score\": 40, \"passed\": false, \"evidence\": \"CRC未站在患者角度思考，未理解患者想提前了解情况以便安排时间的需求。\", \"suggestion\": \"多从患者角度出发，理解患者的困难和需求。\"}, {\"category\": \"沟通态度\", \"dimension\": \"尊重程度\", \"score\": 40, \"passed\": false, \"evidence\": \"CRC不尊重患者的询问，未认真对待患者的问题。\", \"suggestion\": \"尊重患者的知情权，认真回答患者问题。\"}, {\"category\": \"合规性\", \"dimension\": \"知情沟通合规\", \"score\": 60, \"passed\": true, \"evidence\": \"对话中未出现不夸大疗效、不隐瞒风险等不合规情况。\", \"suggestion\": \"继续保持合规沟通。\"}], \"principles\": {\"以患者为中心\": \"未充分体现，CRC未围绕患者理解与舒适展开沟通，对患者的问题回答不耐心、不全面。\", \"双向尊重\": \"未充分体现，CRC对患者的询问不够尊重。\", \"持续耐心\": \"未充分体现，CRC在沟通中表现出不耐烦。\"}, \"strengths\": [\"在沟通中未出现不夸大疗效、不隐瞒风险等不合规情况。\"], \"improvements\": [\"提高沟通的耐心程度，站在患者角度思考问题，尊重患者的询问，对患者的问题给予详细准确的回答。\"]}",
+  "usage": {
+    "completion_tokens": 701,
+    "prompt_tokens": 1551,
+    "total_tokens": 2252,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}

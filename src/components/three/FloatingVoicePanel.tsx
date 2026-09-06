@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Html } from '@react-three/drei';
 import type { ActivePatient } from '../../game/types';
 import type { ConversationStatus, SubtitleEvent } from '../../voice/conversation';
-import { getOrCreatePatientConversation } from '../../voice/conversationStore';
+import { getExistingConversation, getOrCreatePatientConversation } from '../../voice/conversationStore';
+import { store } from '../../game/store';
+import { startWavRecording, type WavRecorderHandle } from '../../voice/wavRecorder';
 
 interface Props {
   bedPosition: [number, number, number];
@@ -28,6 +30,12 @@ export function FloatingVoicePanel({
   const [voiceReady, setVoiceReady] = useState(false);
   const [voiceStarting, setVoiceStarting] = useState(false);
   const [progress, setProgress] = useState('');
+  const [recording, setRecording] = useState(false);
+  const recorderRef = useRef<WavRecorderHandle | null>(null);
+  const recordingRef = useRef(false);
+  const statusRef = useRef(status);
+  statusRef.current = status;
+  recordingRef.current = recording;
 
   // Stable listener object — built ONCE per mount.
   const listenersRef = useRef<{
@@ -48,26 +56,15 @@ export function FloatingVoicePanel({
   }
   const listeners = listenersRef.current;
 
-  // Auto-start when the panel mounts. We do NOT dispose on unmount — the
-  // panel can be transiently hidden (e.g. when an exam modal opens) without
-  // killing the conversation. The parent owns the conversation lifecycle:
-  // T-toggle-off and patient-leaves both call disposePatientConversation
-  // explicitly.
-  //
-  // We key on `patient.case.id` (not just bedIndex) so that swapping the
-  // active patient — they all share the polyclinic sentinel bedIndex — also
-  // re-runs init(): the cached conv has been disposed by the parent before
-  // this re-render, so getOrCreatePatientConversation builds a fresh one
-  // and we trigger its greeting.
   useEffect(() => {
     let cancelled = false;
-    // Reset visible chrome so the previous patient's last-spoken bubble
-    // doesn't bleed into the new patient's encounter.
     setStatus('uninitialized');
     setSubtitle({ who: 'patient', text: '…' });
     setVoiceReady(false);
     setVoiceStarting(false);
     setError('');
+    setRecording(false);
+    recorderRef.current = null;
 
     const conv = getOrCreatePatientConversation(patient.bedIndex, patient.case, listeners);
     const current = conv.getStatus();
@@ -87,26 +84,97 @@ export function FloatingVoicePanel({
   }, [patient.bedIndex, patient.case.id]);
 
   const firstName = patient.case.name.split(' ')[0];
+  const isCrc = store.getState().dialogueBackend === 'crc';
+
+  const beginRecord = async () => {
+    if (!isCrc || !voiceReady || recordingRef.current) return;
+    const st = statusRef.current;
+    if (st === 'thinking' || st === 'speaking' || st === 'loading') return;
+    try {
+      recorderRef.current = await startWavRecording();
+      recordingRef.current = true;
+      setRecording(true);
+      setError('');
+    } catch (err: any) {
+      setError(err?.message ?? '无法打开麦克风');
+    }
+  };
+
+  const endRecord = async () => {
+    if (!recordingRef.current || !recorderRef.current) return;
+    const handle = recorderRef.current;
+    recorderRef.current = null;
+    recordingRef.current = false;
+    setRecording(false);
+    try {
+      const blob = await handle.stop();
+      const conv = getExistingConversation(patient.bedIndex);
+      if (!conv) throw new Error('会话不存在');
+      await conv.sendVoiceBlob(blob);
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    }
+  };
+
+  // Space / Enter hold-to-talk (ignore when typing in inputs)
+  useEffect(() => {
+    if (!isCrc || !voiceReady) return;
+
+    const isTypingTarget = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null;
+      if (!el) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (el.isContentEditable) return true;
+      return false;
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' && e.code !== 'Enter') return;
+      if (isTypingTarget(e.target)) return;
+      if (e.repeat) return;
+      e.preventDefault();
+      void beginRecord();
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' && e.code !== 'Enter') return;
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      void endRecord();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCrc, voiceReady, patient.bedIndex]);
+
   const statusLabel =
-    status === 'listening' ? '聆听中…' :
+    status === 'listening' || recording ? '录音中…' :
     status === 'thinking' ? '思考中…' :
     status === 'speaking' ? `${firstName.toUpperCase()} 说话中` :
     status === 'loading' ? '连接中…' :
-    voiceReady ? '在线' :
+    voiceReady ? (isCrc ? 'CRC 在线' : '在线') :
     voiceStarting ? '连接中…' : '离线';
 
   const idleHint =
+    recording ? '松开空格/回车发送…' :
     status === 'speaking' ? `${firstName} 正在说话…` :
     status === 'thinking' ? `${firstName} 正在思考…` :
     status === 'listening' ? '请讲。' :
     voiceStarting ? (progress || '连接中…') :
-    voiceReady ? '直接开口即可 — 实时。按 T 结束。' :
-    '连接中…';
+    voiceReady
+      ? (isCrc
+        ? '按住 空格 或 回车 说话；也可点按钮。检查→对话可打字。'
+        : '直接开口即可 — 实时。按 T 结束。')
+      : '连接中…';
 
-  const live = voiceReady && (status === 'listening' || status === 'speaking' || status === 'thinking' || status === 'ready');
+  const live = voiceReady && (status === 'listening' || status === 'speaking' || status === 'thinking' || status === 'ready' || recording);
   const statusColor =
+    recording || status === 'listening' ? 'var(--mint-deep)' :
     status === 'speaking' ? 'var(--peach-deep)' :
-    status === 'listening' ? 'var(--mint-deep)' :
     status === 'thinking' ? 'var(--butter-deep)' :
     live ? 'var(--mint-deep)' : 'var(--ink-soft)';
 
@@ -116,6 +184,13 @@ export function FloatingVoicePanel({
   const mouthX = bedPosition[0] + ox * cos + oz * sin;
   const mouthY = oy;
   const mouthZ = bedPosition[2] - ox * sin + oz * cos;
+
+  const beginPtt = async (e: ReactPointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    await beginRecord();
+  };
 
   return (
     <Html
@@ -193,6 +268,31 @@ export function FloatingVoicePanel({
           )}
         </div>
 
+        {isCrc && voiceReady && (
+          <button
+            type="button"
+            onPointerDown={(e) => { void beginPtt(e); }}
+            onPointerUp={() => { void endRecord(); }}
+            onPointerCancel={() => { void endRecord(); }}
+            style={{
+              marginTop: 10,
+              width: '100%',
+              border: '3px solid var(--line)',
+              borderRadius: 12,
+              padding: '10px 12px',
+              fontWeight: 900,
+              fontSize: 13,
+              cursor: 'pointer',
+              background: recording ? 'var(--peach)' : 'var(--mint)',
+              boxShadow: '0 3px 0 var(--line)',
+              touchAction: 'none',
+              userSelect: 'none',
+            }}
+          >
+            {recording ? '松开结束（空格/回车）' : '按住说话 · 空格/回车'}
+          </button>
+        )}
+
         {error && (
           <div
             style={{
@@ -211,7 +311,6 @@ export function FloatingVoicePanel({
           </div>
         )}
 
-        {/* Speech-bubble tail — outline + fill stack matches the cozy SpeechBubble. */}
         <div
           style={{
             position: 'absolute',

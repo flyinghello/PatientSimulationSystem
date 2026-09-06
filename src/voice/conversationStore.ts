@@ -1,6 +1,8 @@
 import { Conversation, type ConversationListeners } from './conversation';
 import { buildPersona, buildInitialLine, isPediatric, parentGenderFor } from './patientPersona';
 import type { PatientCase } from '../game/types';
+import { store as gameStore } from '../game/store';
+import { resolveCrcStudy } from './crcClient';
 
 let sharedCtx: AudioContext | null = null;
 
@@ -27,11 +29,11 @@ interface CachedConversation {
   caseId: string;
 }
 
-const store = new Map<number, CachedConversation>();
+const cache = new Map<number, CachedConversation>();
 
 /** Peek at an existing conversation without creating one. */
 export function getExistingConversation(bedIndex: number): Conversation | null {
-  return store.get(bedIndex)?.conv ?? null;
+  return cache.get(bedIndex)?.conv ?? null;
 }
 
 export function getOrCreatePatientConversation(
@@ -39,7 +41,7 @@ export function getOrCreatePatientConversation(
   patientCase: PatientCase,
   listeners: ConversationListeners
 ): Conversation {
-  const existing = store.get(bedIndex);
+  const existing = cache.get(bedIndex);
   if (existing && existing.caseId === patientCase.id) {
     existing.conv.setListeners(listeners);
     return existing.conv;
@@ -48,7 +50,7 @@ export function getOrCreatePatientConversation(
     // A different patient now occupies this slot — tear down the old
     // conversation so the new persona isn't poisoned by prior history.
     existing.conv.dispose();
-    store.delete(bedIndex);
+    cache.delete(bedIndex);
   }
   // The polyclinic uses sentinel bedIndex -10; everything else is ER.
   const setting: 'polyclinic' | 'er' = bedIndex === -10 ? 'polyclinic' : 'er';
@@ -58,6 +60,7 @@ export function getOrCreatePatientConversation(
   const speakerGender: 'M' | 'F' = isPediatric(patientCase)
     ? parentGenderFor(patientCase)
     : patientCase.gender;
+  const dialogueBackend = gameStore.getState().dialogueBackend ?? 'livekit';
   const conv = new Conversation(ctx, listeners, {
     systemPrompt: buildPersona(patientCase, setting),
     initialMessage: buildInitialLine(patientCase),
@@ -65,23 +68,27 @@ export function getOrCreatePatientConversation(
     caseId: patientCase.id,
     // Persist per-patient history so refreshing the page or walking away
     // and back doesn't wipe the conversation — the patient remembers you.
+    // CRC sessions always mint a fresh server session in init(), so we still
+    // namespace the key but wipe it on CRC init.
     storageKey: `conv_history_${patientCase.id}`,
+    backend: dialogueBackend,
+    crcStudy: resolveCrcStudy(patientCase.id),
   });
-  store.set(bedIndex, { conv, caseId: patientCase.id });
+  cache.set(bedIndex, { conv, caseId: patientCase.id });
   return conv;
 }
 
 export function disposePatientConversation(bedIndex: number) {
-  const entry = store.get(bedIndex);
+  const entry = cache.get(bedIndex);
   if (entry) {
     entry.conv.dispose();
-    store.delete(bedIndex);
+    cache.delete(bedIndex);
   }
 }
 
 export function clearAllPatientConversations() {
-  for (const entry of store.values()) entry.conv.dispose();
-  store.clear();
+  for (const entry of cache.values()) entry.conv.dispose();
+  cache.clear();
   if (sharedCtx) {
     try { sharedCtx.close(); } catch { /* noop */ }
     sharedCtx = null;

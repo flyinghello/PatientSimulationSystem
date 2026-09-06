@@ -1,0 +1,546 @@
+{
+  "source": "药物临床试验登记与信息公示平台",
+  "source_id": "f098a8f757a24e2b8087d3bc56420c00",
+  "basic_info": {
+    "registration_no": "CTR20263389",
+    "status": "进行中",
+    "status_detail": "尚未招募",
+    "applicant_contact": "贾茜",
+    "first_public_date": "2026-09-01",
+    "applicant_name": "北京康诺亚生物医药有限公司/ 成都康诺行生物医药科技有限公司"
+  },
+  "title_and_background": {
+    "related_registration_nos": [],
+    "drug_name": "CM512注射液",
+    "drug_type": "生物制品",
+    "clinical_application_no": "企业选择不公示",
+    "indication": "慢性鼻窦炎伴鼻息肉",
+    "scientific_title": "一项评价CM512注射液在慢性鼻窦炎伴鼻息肉患者中的有效性和安全性的随机、双盲、安慰剂平行对照Ⅲ期临床研究",
+    "public_title": "CM512注射液治疗慢性鼻窦炎伴鼻息肉的III期临床研究",
+    "protocol_no": "CM512-102206",
+    "protocol_version": "2.0",
+    "protocol_version_date": "2026-07-31",
+    "combination_therapy": false
+  },
+  "applicant": {
+    "names": [
+      "北京康诺亚生物医药有限公司",
+      "成都康诺行生物医药科技有限公司"
+    ],
+    "contact_name": "贾茜",
+    "contact_phone": "028-88610620",
+    "contact_mobile": "",
+    "contact_email": "qianjia@keymedbio.com",
+    "contact_address": "四川省-成都市-成都天府国际生物城（双流区凤凰路669号）",
+    "contact_postcode": "610219"
+  },
+  "clinical_trial": {
+    "purpose": {
+      "primary": [
+        "评价CM512治疗慢性鼻窦炎伴鼻息肉（CRSwNP）的有效性。"
+      ],
+      "secondary": [
+        "评价CM512治疗CRSwNP的其他有效性；评价CM512治疗CRSwNP的安全性；评价CM512在CRSwNP试验参与者中的药代动力学（PK）特征；评价CM512在CRSwNP试验参与者中的药效学（PD）效应；评价CM512在CRSwNP试验参与者中的免疫原性。"
+      ],
+      "exploratory": [
+        "探索CM512在合并哮喘的CRSwNP试验参与者中的哮喘控制情况。"
+      ]
+    },
+    "design": {
+      "category": "安全性和有效性",
+      "phase": "III期",
+      "design_type": "平行分组",
+      "randomization": "随机化",
+      "blinding": "双盲",
+      "scope": "国内试验"
+    },
+    "subjects": {
+      "age": "18岁(最小年龄)至75岁(最大年龄)",
+      "sex": "男+女",
+      "healthy_volunteers": false,
+      "inclusion_criteria": [
+        "具备理解研究性质的能力，自愿签署 ICF；",
+        "18 周岁≤年龄≤75 周岁，男女不限；",
+        "符合诊断标准的双侧 CRSwNP；",
+        "筛选前 2 年内接受过口服糖皮质激素等 SCS 治疗但仍存在双侧 CRSwNP，和/或在筛选前的 6 个月之前接受过鼻息肉手术治疗；",
+        "筛选前较稳定剂量的 INCS≥2 周；",
+        "在筛选/导入期之前，同时持续存在下述症状≥4 周：1) 鼻塞；2) 其他任一症状如嗅觉减退/丧失或流涕；",
+        "在筛选/导入期和基线时， NPS 至少为 5 分，每侧鼻腔的评分至少为 2 分；",
+        "在筛选/导入期和基线时， 试验参与者报告中度至重度鼻塞；1) 筛选/导入期（V1）访视 NCS 为 2 分或 3 分；2) 基线时周平均NCS≥2 分；",
+        "若试验参与者合并哮喘， 病情稳定",
+        "导入期间， 试验参与者的背景治疗 MFNS 用药依从性和日记卡填写依从性均≥80%。"
+      ],
+      "exclusion_criteria": [
+        "基线前10周或者 5 个半衰期（以时间较长者为准）内接受过生物制剂治疗；",
+        "筛选前4周内参与过其他临床试验；",
+        "基线前 8周或 5 个半衰期内（以时间较长者为准）使用过全身性免疫抑制剂；",
+        "计划研究期间开始白三烯受体拮抗剂治疗；",
+        "计划研究期间开始过敏原特异性免疫治疗；",
+        "筛选前 4周内接受过中、短效 SCS、治疗慢性鼻窦炎的中药，或筛选前 6周内过接受长效 SCS，或计划在研究期间接受上述药物治疗；",
+        "基线前7天内需要全身性抗感染治疗；",
+        "试验参与者在筛选/导入期 FEV1占预计值百分比≤50%；",
+        "筛选前6个月内接受过鼻外科手术；",
+        "上颌窦后鼻孔息肉；",
+        "鼻中隔穿孔或较严重的鼻中隔偏曲；",
+        "持续的药物性鼻炎；",
+        "嗜酸性肉芽肿性多血管炎、肉芽肿性多血管炎、 杨氏综合征、 Kartagener 综合征或其他纤毛运动障碍综合征、囊性纤维化、嗜酸性粒细胞食管炎等；",
+        "筛选访视或筛选前 2 周内发生急性鼻窦炎、鼻部感染或上呼吸道感染；",
+        "鼻腔恶性肿瘤或良性肿瘤；",
+        "对 MFNS 或对抗 TSLP 单克隆抗体、抗 IL-13 单克隆抗体类药物或者 CM512 药物成分过敏者；",
+        "伴随其他控制不佳的严重疾病或反复发作的慢性疾病；",
+        "筛选前5年内患恶性肿瘤的试验参与者；",
+        "有严重肝脏、肾脏功能损伤的试验参与者；",
+        "随机前 30 天内接种活疫苗或减毒活疫苗；",
+        "已知或疑似免疫抑制者；",
+        "筛选前 3个月内大量饮酒或药物滥用史者；",
+        "对于女性试验参与者，筛选时处于妊娠期、哺乳期；",
+        "有生育能力的女性试验参与者或男性试验参与者从签署ICF到末次试验用药品给药后5 个月内有生育计划或捐精计划，或不同意采用高效的避孕措施；",
+        "研究者认为试验参与者存在其他不适合参加本研究的医学或非医学情况。"
+      ]
+    },
+    "arms": {
+      "investigational_drugs": [
+        {
+          "index": 1,
+          "name_cn": "CM512注射液",
+          "name_en": "NA",
+          "trade_name": "NA",
+          "dosage_form": "注射液",
+          "strength": "300mg（2ml）",
+          "usage": "皮下注射给药，每24周给药一次",
+          "duration": "多次"
+        }
+      ],
+      "control_drugs": [
+        {
+          "index": 1,
+          "name_cn": "CM512安慰剂（成分：组氨酸、盐酸组氨酸、盐酸精氨酸、甲硫氨酸、依地酸二钠、聚山梨酯80（II）和注射用水）",
+          "name_en": "NA",
+          "trade_name": "NA",
+          "dosage_form": "注射剂",
+          "strength": "2ml",
+          "usage": "皮下注射给药，每24周给药1次",
+          "duration": "多次"
+        }
+      ]
+    },
+    "endpoints": {
+      "primary": [
+        {
+          "index": 1,
+          "measure": "治疗W24时鼻息肉评分（NPS）较基线变化。",
+          "time_frame": "W24",
+          "type": "有效性指标"
+        },
+        {
+          "index": 2,
+          "measure": "治疗W24时鼻塞评分（NCS）较基线变化。",
+          "time_frame": "W24",
+          "type": "有效性指标"
+        }
+      ],
+      "secondary": [
+        {
+          "index": 1,
+          "measure": "NPS、NCS、TSS、Lund-Mackay评分、SNOT-22评分、EQ-5D-5L、SF-6D较基线变化",
+          "time_frame": "研究期间",
+          "type": "有效性指标"
+        },
+        {
+          "index": 2,
+          "measure": "不良事件（AE）、体格检查、生命体征、 12-导联心电图（ECG）和实验室检查等",
+          "time_frame": "研究期间",
+          "type": "安全性指标"
+        },
+        {
+          "index": 3,
+          "measure": "药代动力学",
+          "time_frame": "研究期间",
+          "type": "有效性指标"
+        },
+        {
+          "index": 4,
+          "measure": "药效动力学",
+          "time_frame": "研究期间",
+          "type": "有效性指标"
+        },
+        {
+          "index": 5,
+          "measure": "免疫原性情况",
+          "time_frame": "研究期间",
+          "type": "安全性指标"
+        },
+        {
+          "index": 6,
+          "measure": "ACQ-6、FEV1较基线变化",
+          "time_frame": "研究期间",
+          "type": "有效性指标"
+        }
+      ]
+    },
+    "dmc": false,
+    "insurance": true
+  },
+  "investigators": {
+    "principal_investigators": [
+      {
+        "index": 1,
+        "name": "张罗",
+        "degree": "医学博士",
+        "title": "主任医师",
+        "phone": "010-65141136",
+        "email": "dr.luozhang@139.com",
+        "address": "北京市-北京市-东城区东郊民巷1号",
+        "postcode": "100730",
+        "organization": "首都医科大学附属北京同仁医院"
+      }
+    ],
+    "sites": [
+      {
+        "index": 1,
+        "organization": "首都医科大学附属北京同仁医院",
+        "investigator": "张罗/王成硕",
+        "country": "中国",
+        "province": "北京市",
+        "city": "北京市"
+      },
+      {
+        "index": 2,
+        "organization": "北京大学第三医院",
+        "investigator": "闫燕",
+        "country": "中国",
+        "province": "北京市",
+        "city": "北京市"
+      },
+      {
+        "index": 3,
+        "organization": "淄博市中心医院",
+        "investigator": "宋道亮",
+        "country": "中国",
+        "province": "山东省",
+        "city": "淄博市"
+      },
+      {
+        "index": 4,
+        "organization": "重庆医科大学附属第一医院",
+        "investigator": "杨玉成",
+        "country": "中国",
+        "province": "重庆市",
+        "city": "重庆市"
+      },
+      {
+        "index": 5,
+        "organization": "烟台毓璜顶医院",
+        "investigator": "宋西成",
+        "country": "中国",
+        "province": "山东省",
+        "city": "烟台市"
+      },
+      {
+        "index": 6,
+        "organization": "荆州市中心医院",
+        "investigator": "万俐佳",
+        "country": "中国",
+        "province": "湖北省",
+        "city": "荆州市"
+      },
+      {
+        "index": 7,
+        "organization": "浙江省人民医院",
+        "investigator": "苏立众",
+        "country": "中国",
+        "province": "浙江省",
+        "city": "杭州市"
+      },
+      {
+        "index": 8,
+        "organization": "上海交通大学医学院附属仁济医院",
+        "investigator": "李吉平",
+        "country": "中国",
+        "province": "上海市",
+        "city": "上海市"
+      },
+      {
+        "index": 9,
+        "organization": "温州医科大学附属第二医院",
+        "investigator": "刘学军",
+        "country": "中国",
+        "province": "浙江省",
+        "city": "温州市"
+      },
+      {
+        "index": 10,
+        "organization": "山东省第二人民医院",
+        "investigator": "史丽/万玉柱",
+        "country": "中国",
+        "province": "山东省",
+        "city": "济南市"
+      },
+      {
+        "index": 11,
+        "organization": "中南大学湘雅三医院",
+        "investigator": "谭国林",
+        "country": "中国",
+        "province": "湖南省",
+        "city": "长沙市"
+      },
+      {
+        "index": 12,
+        "organization": "中国医科大学附属盛京医院",
+        "investigator": "曹志伟",
+        "country": "中国",
+        "province": "辽宁省",
+        "city": "沈阳市"
+      },
+      {
+        "index": 13,
+        "organization": "南昌大学第二附属医院",
+        "investigator": "刘红兵",
+        "country": "中国",
+        "province": "江西省",
+        "city": "南昌市"
+      },
+      {
+        "index": 14,
+        "organization": "成都中医药大学附属医院",
+        "investigator": "谢艳",
+        "country": "中国",
+        "province": "四川省",
+        "city": "成都市"
+      },
+      {
+        "index": 15,
+        "organization": "河北省人民医院",
+        "investigator": "屈永涛",
+        "country": "中国",
+        "province": "河北省",
+        "city": "石家庄市"
+      },
+      {
+        "index": 16,
+        "organization": "南昌大学第一附属医院",
+        "investigator": "叶菁",
+        "country": "中国",
+        "province": "江西省",
+        "city": "南昌市"
+      },
+      {
+        "index": 17,
+        "organization": "吉林大学中日联谊医院",
+        "investigator": "朱冬冬",
+        "country": "中国",
+        "province": "吉林省",
+        "city": "长春市"
+      },
+      {
+        "index": 18,
+        "organization": "吉林大学第一医院",
+        "investigator": "王宇声",
+        "country": "中国",
+        "province": "吉林省",
+        "city": "长春市"
+      },
+      {
+        "index": 19,
+        "organization": "华中科技大大学同济医学院附属协和医院",
+        "investigator": "陈建军/周涛",
+        "country": "中国",
+        "province": "湖北省",
+        "city": "武汉市"
+      },
+      {
+        "index": 20,
+        "organization": "河北北方学院附属第一医院",
+        "investigator": "尚小领",
+        "country": "中国",
+        "province": "河北省",
+        "city": "张家口市"
+      },
+      {
+        "index": 21,
+        "organization": "山西医科大学第二医院",
+        "investigator": "薛金梅",
+        "country": "中国",
+        "province": "山西省",
+        "city": "太原市"
+      },
+      {
+        "index": 22,
+        "organization": "山西医科大学第一医院",
+        "investigator": "柴向斌",
+        "country": "中国",
+        "province": "山西省",
+        "city": "太原市"
+      },
+      {
+        "index": 23,
+        "organization": "佛山市第一人民医院",
+        "investigator": "王凯",
+        "country": "中国",
+        "province": "广东省",
+        "city": "佛山市"
+      },
+      {
+        "index": 24,
+        "organization": "天津市第一中心医院",
+        "investigator": "王巍",
+        "country": "中国",
+        "province": "天津市",
+        "city": "天津市"
+      },
+      {
+        "index": 25,
+        "organization": "北京大学第一医院",
+        "investigator": "刘俊秀",
+        "country": "中国",
+        "province": "北京市",
+        "city": "北京市"
+      },
+      {
+        "index": 26,
+        "organization": "中南大学湘雅医院",
+        "investigator": "谢志海",
+        "country": "中国",
+        "province": "湖南省",
+        "city": "长沙市"
+      },
+      {
+        "index": 27,
+        "organization": "四川大学华西医院",
+        "investigator": "刘锋",
+        "country": "中国",
+        "province": "四川省",
+        "city": "成都市"
+      },
+      {
+        "index": 28,
+        "organization": "西安交通大学第二附属医院",
+        "investigator": "祝康",
+        "country": "中国",
+        "province": "陕西省",
+        "city": "西安市"
+      },
+      {
+        "index": 29,
+        "organization": "连云港市第一人民医院",
+        "investigator": "董春光",
+        "country": "中国",
+        "province": "江苏省",
+        "city": "连云港市"
+      },
+      {
+        "index": 30,
+        "organization": "杭州市第一人民医院",
+        "investigator": "李勇",
+        "country": "中国",
+        "province": "浙江省",
+        "city": "杭州市"
+      },
+      {
+        "index": 31,
+        "organization": "广西壮族自治区人民医院",
+        "investigator": "瞿申红",
+        "country": "中国",
+        "province": "广西壮族自治区",
+        "city": "南宁市"
+      },
+      {
+        "index": 32,
+        "organization": "苏州大学附属第一医院",
+        "investigator": "于亚峰",
+        "country": "中国",
+        "province": "江苏省",
+        "city": "苏州市"
+      },
+      {
+        "index": 33,
+        "organization": "河南省人民医院",
+        "investigator": "王广科",
+        "country": "中国",
+        "province": "河南省",
+        "city": "郑州市"
+      },
+      {
+        "index": 34,
+        "organization": "郑州大学第一附属医院",
+        "investigator": "董栋",
+        "country": "中国",
+        "province": "河南省",
+        "city": "郑州市"
+      },
+      {
+        "index": 35,
+        "organization": "宁夏医科大学总医院",
+        "investigator": "高小平",
+        "country": "中国",
+        "province": "宁夏回族自治区",
+        "city": "银川市"
+      },
+      {
+        "index": 36,
+        "organization": "陕西省人民医院",
+        "investigator": "刘晖",
+        "country": "中国",
+        "province": "陕西省",
+        "city": "西安市"
+      },
+      {
+        "index": 37,
+        "organization": "遵义医科大学附属医院",
+        "investigator": "刘兆辉",
+        "country": "中国",
+        "province": "贵州省",
+        "city": "遵义市"
+      },
+      {
+        "index": 38,
+        "organization": "宁波市医疗中心李惠利医院",
+        "investigator": "叶栋",
+        "country": "中国",
+        "province": "浙江省",
+        "city": "宁波市"
+      },
+      {
+        "index": 39,
+        "organization": "包头市中心医院",
+        "investigator": "许振东",
+        "country": "中国",
+        "province": "内蒙古自治区",
+        "city": "包头市"
+      },
+      {
+        "index": 40,
+        "organization": "聊城市人民医院",
+        "investigator": "宫丽丽",
+        "country": "中国",
+        "province": "山东省",
+        "city": "聊城市"
+      },
+      {
+        "index": 41,
+        "organization": "山东大学齐鲁医院",
+        "investigator": "冯昕",
+        "country": "中国",
+        "province": "山东省",
+        "city": "济南市"
+      }
+    ]
+  },
+  "ethics_committees": [
+    {
+      "index": 1,
+      "name": "首都医科大学附属北京同仁医院伦理委员会",
+      "conclusion": "同意",
+      "approval_date": "2026-08-25"
+    }
+  ],
+  "recruitment": {
+    "target_enrollment": null,
+    "enrolled": null,
+    "actual_total_enrollment": null,
+    "first_informed_consent_date": null,
+    "first_enrollment_date": null,
+    "completion_date": null
+  },
+  "results_summary": []
+}

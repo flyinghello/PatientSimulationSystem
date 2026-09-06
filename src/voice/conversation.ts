@@ -33,6 +33,16 @@ import {
   type TranscriptionSegment,
 } from 'livekit-client';
 import { hasClaudeKey, streamClaude, type ChatMessage } from './claude';
+import {
+  crcCreateSession,
+  crcReply,
+  crcTts,
+  crcVoiceTurn,
+  playBase64Mp3,
+  resolveCrcStudy,
+  stopCrcAudio,
+} from './crcClient';
+import type { DialogueBackend } from '../game/types';
 
 const FALLBACK_PERSONA =
   'You are a patient speaking to a doctor. Keep replies to 1–2 short spoken sentences. ' +
@@ -87,6 +97,10 @@ export interface ConversationOptions {
   voice?: string;
   /** If set, persist/restore the conversation history to localStorage under this key. */
   storageKey?: string;
+  /** `crc` uses front/server.py; `livekit` is the original medkit voice path. */
+  backend?: DialogueBackend;
+  /** CRC study stem when backend === 'crc'. */
+  crcStudy?: string;
 }
 
 interface VoiceTokenResponse {
@@ -126,6 +140,11 @@ export class Conversation {
   private voiceGender: 'M' | 'F';
   private caseId: string;
   private storageKey: string | null = null;
+  private backend: DialogueBackend = 'livekit';
+  private crcStudy: string;
+  private crcSessionId: string | null = null;
+  /** Bumps whenever a new CRC utterance starts — drops stale TTS responses. */
+  private crcSpeakSeq = 0;
 
   private messageSubscribers = new Set<(msgs: ReadonlyArray<ChatMessage>) => void>();
 
@@ -144,10 +163,96 @@ export class Conversation {
     this.voiceGender = options.voiceGender ?? 'M';
     this.caseId = options.caseId ?? 'unknown';
     this.storageKey = options.storageKey ?? null;
+    this.backend = options.backend ?? 'livekit';
+    this.crcStudy = options.crcStudy ?? resolveCrcStudy(this.caseId);
     this.ampBuf = new Uint8Array(1024);
 
     const restored = this.loadMessages();
     this.messages = restored && restored.length > 0 ? restored : [this.initialMessage];
+  }
+
+  isCrcBackend(): boolean {
+    return this.backend === 'crc';
+  }
+
+  getCrcSessionId(): string | null {
+    return this.crcSessionId;
+  }
+
+  private async speakCrcLine(text: string, emotion?: string | null) {
+    const line = text.trim();
+    if (!line) return;
+    const seq = ++this.crcSpeakSeq;
+    try {
+      stopCrcAudio();
+      const tts = await crcTts(line, {
+        sessionId: this.crcSessionId,
+        emotion: emotion ?? undefined,
+      });
+      if (seq !== this.crcSpeakSeq) return;
+      if (tts.audio_base64) playBase64Mp3(tts.audio_base64);
+    } catch (err) {
+      console.warn('CRC TTS failed:', err);
+    }
+  }
+
+  /** CRC push-to-talk: WAV blob → ASR → PatientTurn → TTS. */
+  async sendVoiceBlob(blob: Blob): Promise<void> {
+    if (this.backend !== 'crc') {
+      throw new Error('sendVoiceBlob 仅支持 CRC 模式');
+    }
+    if (!this.crcSessionId) {
+      this.listeners.onError?.('CRC 会话尚未创建');
+      return;
+    }
+    if (this.status !== 'ready' && this.status !== 'listening') return;
+
+    const seq = ++this.crcSpeakSeq;
+    stopCrcAudio();
+    this.setStatus('thinking', '识别中…');
+    this.listeners.onProgress?.('火山 ASR + CRC 回复中…');
+    try {
+      const data = await crcVoiceTurn(this.crcSessionId, blob);
+      if (seq !== this.crcSpeakSeq) return;
+      const crcText = (data.crc_text || '').trim();
+      if (crcText) {
+        this.listeners.onSubtitle?.({ who: 'you', text: crcText });
+        this.messages.push({ role: 'user', content: crcText });
+      }
+      const line = (data.patient_line || '').trim();
+      if (line) {
+        this.setEmotion(detectEmotion(line));
+        this.listeners.onSubtitle?.({ who: 'patient', text: line });
+        this.messages.push({ role: 'assistant', content: line });
+        this.setStatus('speaking');
+        if (data.audio_base64) {
+          playBase64Mp3(data.audio_base64);
+          setTimeout(() => {
+            if (this.status === 'speaking') this.setStatus('ready');
+          }, 2800);
+        } else {
+          try {
+            const tts = await crcTts(line, {
+              sessionId: this.crcSessionId,
+              emotion: data.tts_emotion,
+              emotionScale: data.tts_emotion_scale,
+            });
+            if (seq === this.crcSpeakSeq && tts.audio_base64) playBase64Mp3(tts.audio_base64);
+          } catch {
+            /* optional */
+          }
+          this.setStatus('ready');
+        }
+      } else {
+        this.setStatus('ready');
+      }
+      this.saveMessages();
+      this.emitMessages();
+    } catch (err: any) {
+      console.error('CRC voice turn failed:', err);
+      this.listeners.onError?.(err?.message ?? String(err));
+      this.setStatus('ready');
+    }
   }
 
   private saveMessages() {
@@ -333,6 +438,11 @@ export class Conversation {
     if (this.status !== 'uninitialized') return;
     this.setStatus('loading');
 
+    if (this.backend === 'crc') {
+      await this.initCrc();
+      return;
+    }
+
     try {
       if (!hasClaudeKey()) {
         throw new Error('Patient backend unavailable.');
@@ -380,6 +490,54 @@ export class Conversation {
     }
   }
 
+  /** Boot CRC session on :8790 (proxied /api) — text + optional Volc TTS. */
+  private async initCrc() {
+    try {
+      this.listeners.onProgress?.(`连接 CRC 会话（${this.crcStudy}）…`);
+      // Fresh encounter — don't reuse stale localStorage history against a new CRC session.
+      if (this.storageKey) {
+        try { localStorage.removeItem(this.storageKey); } catch { /* noop */ }
+      }
+      const session = await crcCreateSession({ study: this.crcStudy, randomPersona: false });
+      this.crcSessionId = session.session_id;
+      const line = (session.patient_line || this.initialMessage.content || '').trim();
+      this.initialMessage = { role: 'assistant', content: line || '您好。' };
+      this.messages = [{ role: 'assistant', content: this.initialMessage.content }];
+      this.saveMessages();
+      this.emitMessages();
+
+      this.listeners.onSubtitle?.({ who: 'patient', text: this.initialMessage.content });
+      this.setEmotion(detectEmotion(this.initialMessage.content));
+      this.setStatus('ready');
+      this.listeners.onProgress?.('CRC 已就绪（文字对话；可朗读）');
+
+      // Best-effort speak opening line via Volc TTS
+      try {
+        const seq = ++this.crcSpeakSeq;
+        stopCrcAudio();
+        const tts = await crcTts(this.initialMessage.content, {
+          sessionId: this.crcSessionId,
+          emotion: session.tts_emotion,
+          emotionScale: session.tts_emotion_scale,
+        });
+        if (seq !== this.crcSpeakSeq) return;
+        playBase64Mp3(tts.audio_base64);
+        this.setStatus('speaking');
+        setTimeout(() => {
+          if (this.status === 'speaking') this.setStatus('ready');
+        }, 2500);
+      } catch {
+        /* TTS optional */
+      }
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      console.error('CRC Conversation init failed:', err);
+      this.setStatus('error', msg);
+      this.listeners.onError?.(msg);
+      throw err;
+    }
+  }
+
   /** Back-compat no-op. Real-time means mic is always live. */
   async startListening() {
     if (this.status === 'uninitialized') return;
@@ -411,6 +569,17 @@ export class Conversation {
   async sayFarewell(): Promise<void> {
     this.setStatus('thinking', 'Saying goodbye…');
     this.listeners.onSubtitle?.({ who: 'patient', text: '…' });
+
+    if (this.backend === 'crc') {
+      const bye = '好的，谢谢您，再见。';
+      this.listeners.onSubtitle?.({ who: 'patient', text: bye });
+      this.messages.push({ role: 'assistant', content: bye });
+      this.saveMessages();
+      this.emitMessages();
+      await this.speakCrcLine(bye);
+      this.setStatus('ready');
+      return;
+    }
 
     // Stop the doctor's mic so the agent's farewell can't trigger another
     // STT round-trip and a follow-up reply.
@@ -495,18 +664,45 @@ export class Conversation {
     this.setStatus('ready');
   }
 
-  /** Text-chat turn — used by PatientChatPanel. Routes through the legacy
-   *  /agent/patient/stream so it doesn't fight the live voice session. */
+  /** Text-chat turn — CRC PatientTurn or legacy /agent/patient/stream. */
   async sendTextMessage(text: string, _opts?: { speak?: boolean }): Promise<void> {
     const clean = text.trim();
     if (!clean) return;
-    if (this.status !== 'ready') return;
+    if (this.status !== 'ready' && this.status !== 'listening') return;
 
     this.listeners.onSubtitle?.({ who: 'you', text: clean });
     this.messages.push({ role: 'user', content: clean });
     this.saveMessages();
     this.emitMessages();
     this.setStatus('thinking', 'Thinking…');
+
+    if (this.backend === 'crc') {
+      if (!this.crcSessionId) {
+        this.listeners.onError?.('CRC 会话尚未创建');
+        this.setStatus('error', 'no crc session');
+        return;
+      }
+      try {
+        const data = await crcReply(this.crcSessionId, clean);
+        const line = (data.patient_line || '').trim();
+        if (line) {
+          this.setEmotion(detectEmotion(line));
+          this.listeners.onSubtitle?.({ who: 'patient', text: line });
+          this.messages.push({ role: 'assistant', content: line });
+          this.saveMessages();
+          this.emitMessages();
+          if (_opts?.speak !== false) {
+            void this.speakCrcLine(line, data.tts_emotion);
+          }
+        }
+        this.setStatus(data.ended ? 'ready' : 'ready');
+      } catch (err: any) {
+        console.error('CRC reply failed:', err);
+        this.listeners.onError?.(err?.message ?? String(err));
+        this.setStatus('ready');
+      }
+      return;
+    }
 
     const controller = new AbortController();
     let assistantText = '';
@@ -544,10 +740,13 @@ export class Conversation {
   }
 
   dispose() {
+    this.crcSpeakSeq += 1;
+    stopCrcAudio();
     if (this.room) {
       try { this.room.disconnect(); } catch { /* noop */ }
       this.room = null;
     }
+    this.crcSessionId = null;
     this.detachAnalyser();
     this.remoteAudioTrack = null;
     // Remove any audio elements we appended for playback.

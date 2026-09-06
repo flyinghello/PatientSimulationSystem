@@ -177,6 +177,7 @@ export function EncounterScreen() {
   // connection + mic. We never gate behind a "Begin consultation" button.
   const [voiceActive, setVoiceActive] = useState(true);
   const [pointerLocked, setPointerLocked] = useState(false);
+  const [lookMode, setLookMode] = useState(false);
   const [examineOpen, setExamineOpen] = useState(false);
 
   // If the user navigated straight here without a patient set, drop the
@@ -218,8 +219,51 @@ export function EncounterScreen() {
   useEffect(() => {
     if (!examineOpen) return;
     if (document.pointerLockElement) document.exitPointerLock();
+    setLookMode(false);
     interactionBus.setActive(null);
   }, [examineOpen]);
+
+  // Entering look mode: mount PointerLockControls then request lock on canvas.
+  // Leaving: release lock.
+  useEffect(() => {
+    if (examineOpen) return;
+    if (!lookMode) {
+      if (document.pointerLockElement) document.exitPointerLock();
+      return;
+    }
+    const id = window.setTimeout(() => {
+      const canvas = document.querySelector('canvas');
+      if (canvas && !document.pointerLockElement) {
+        canvas.requestPointerLock?.().catch?.(() => undefined);
+      }
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [lookMode, examineOpen]);
+
+  // Esc while looking: exit look mode (browser also exits pointer lock).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (!lookMode && !document.pointerLockElement) return;
+      setLookMode(false);
+      if (document.pointerLockElement) document.exitPointerLock();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lookMode]);
+
+  // If the user hits Esc and the browser drops lock, leave look mode too.
+  const wasLockedRef = useRef(false);
+  useEffect(() => {
+    if (pointerLocked) {
+      wasLockedRef.current = true;
+      return;
+    }
+    if (wasLockedRef.current && lookMode) {
+      wasLockedRef.current = false;
+      setLookMode(false);
+    }
+  }, [pointerLocked, lookMode]);
 
   // Global T — toggle voice off / on. Works whether or not pointer-lock
   // is engaged; mirrors the in-scene Player handler that requires lock.
@@ -256,6 +300,7 @@ export function EncounterScreen() {
       if (examineOpen) return;
       e.preventDefault();
       setExamineOpen(true);
+      setLookMode(false);
       if (document.pointerLockElement) document.exitPointerLock();
       interactionBus.setActive(null);
     };
@@ -278,14 +323,25 @@ export function EncounterScreen() {
     else setVoiceActive(false);
   }, [currentPatientCaseId, patient]);
 
-  // Look-around is automatic while Examine is closed — PointerLockControls
-  // mounts inside Player and engages on canvas click. When Examine opens
-  // we tear it down so modal clicks can't bleed into the 3D scene.
+  // Look-around is OFF by default so UI buttons (按住说话 etc.) stay clickable.
+  // Double-click the scene to enter/exit look mode.
 
   const openExamine = () => {
     if (document.pointerLockElement) document.exitPointerLock();
+    setLookMode(false);
     interactionBus.setActive(null);
     setExamineOpen(true);
+  };
+
+  const toggleLookMode = () => {
+    if (examineOpen) return;
+    setLookMode((prev) => {
+      if (prev) {
+        if (document.pointerLockElement) document.exitPointerLock();
+        return false;
+      }
+      return true;
+    });
   };
 
   const handleInteract = (kind: 'desk' | 'bed' | 'triage', bedIndex?: number) => {
@@ -358,6 +414,10 @@ export function EncounterScreen() {
           shadows
           camera={{ position: playerSpawn, fov: 55 }}
           style={{ background: 'linear-gradient(#f0ebe1, #e3dac7)' }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            toggleLookMode();
+          }}
         >
           <AdaptiveCameraFov />
           <Suspense fallback={<Loader />}>
@@ -373,7 +433,7 @@ export function EncounterScreen() {
               height={SEATED_HEIGHT}
               locked
               lookAt={doctorLookAt}
-              enableLook={!examineOpen}
+              enableLook={lookMode && !examineOpen}
             />
           </Suspense>
         </Canvas>
@@ -390,6 +450,7 @@ export function EncounterScreen() {
             display: 'flex',
             gap: 10,
           }}
+          data-no-look
         >
           <button
             type="button"
@@ -425,9 +486,9 @@ export function EncounterScreen() {
             pointerEvents: 'none',
           }}
         >
-          {pointerLocked ? (
+          {lookMode || pointerLocked ? (
             <>
-              直接开口即可 — 语音已开启 · <Kbd>E</Kbd> 查看资料 · <Kbd>T</Kbd> 静音 · <Kbd>Esc</Kbd> 释放
+              环视中 · 移动鼠标转向 · <Kbd>双击</Kbd> 或 <Kbd>Esc</Kbd> 退出 · <Kbd>E</Kbd> 资料 · <Kbd>T</Kbd> 静音
             </>
           ) : (
             <>
@@ -435,7 +496,7 @@ export function EncounterScreen() {
                 className={voiceActive ? 'dot breathe' : 'dot'}
                 style={{ background: voiceActive ? 'var(--peach-deep)' : 'var(--ink-soft)' }}
               />
-              {voiceActive ? '语音已开启' : '语音已静音'} · 点击环视四周 · <Kbd>E</Kbd> 查看资料 · <Kbd>T</Kbd> 静音
+              {voiceActive ? '可点击按钮 / 按住说话' : '语音已静音'} · <Kbd>双击</Kbd> 进入环视 · <Kbd>E</Kbd> 资料 · <Kbd>T</Kbd> 静音
             </>
           )}
         </div>

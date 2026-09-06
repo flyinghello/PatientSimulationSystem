@@ -188,6 +188,8 @@ export interface PolyclinicSlice {
   patient: ActivePatient | null;
 }
 
+export type DialogueBackend = 'crc' | 'livekit';
+
 // ── Combined game state ──
 export interface GameState {
   screen: Screen;
@@ -196,6 +198,12 @@ export interface GameState {
   endConfirm: EndConfirmChecks;
   selectedCaseId: string;
   hasOnboarded: boolean;
+  /**
+   * Which dialogue stack powers the encounter:
+   * - `crc` — Door A「试药前」→ front/server.py (火山 ASR/TTS + PatientTurn)
+   * - `livekit` — Door B「旧项目」→ medkit /voice/token worker
+   */
+  dialogueBackend: DialogueBackend;
   /** Polyclinic 3D scene needs this slice. Shape consumed by `Polyclinic`
    *  and `FloatingVoicePanel`. */
   polyclinic: PolyclinicSlice;

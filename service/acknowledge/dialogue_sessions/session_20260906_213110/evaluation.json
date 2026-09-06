@@ -1,0 +1,84 @@
+{
+  "overall_score": 0.0,
+  "passed": false,
+  "summary": "CRC在与患者沟通时态度恶劣，直接导致患者放弃参加试验，严重不符合入组前知情沟通的要求。",
+  "dimensions": [
+    {
+      "category": "沟通准备",
+      "dimension": "信息传递",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "患者询问试验目的，CRC未做任何解释，直接结束对话。",
+      "suggestion": "CRC应使用通俗易懂的语言，详细解释试验目的。"
+    },
+    {
+      "category": "沟通准备",
+      "dimension": "知情同意",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "患者对试验目的不清楚，CRC未协助研究者确保患者充分理解知情同意书。",
+      "suggestion": "CRC应协助研究者，确保患者充分理解知情同意书的内容。"
+    },
+    {
+      "category": "沟通准备",
+      "dimension": "个性化适配",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "CRC未根据患者的情况调整沟通方式，而是采取了恶劣的态度。",
+      "suggestion": "CRC应根据患者的病情、文化水平、理解力等因素，调整沟通方式。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "耐心程度",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "CRC没有耐心回答患者的问题，而是直接结束对话。",
+      "suggestion": "CRC应保持极大的耐心，鼓励患者表达疑惑。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "共情能力",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "CRC没有站在患者的角度思考，而是采取了冷漠、机械化的态度。",
+      "suggestion": "CRC应站在患者的角度思考，如亲人般与患者交谈。"
+    },
+    {
+      "category": "沟通态度",
+      "dimension": "尊重程度",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "CRC不尊重患者的选择，强行结束对话。",
+      "suggestion": "CRC应尊重患者的选择，不强行催促入组。"
+    },
+    {
+      "category": "合规性",
+      "dimension": "知情沟通合规",
+      "score": 0.0,
+      "passed": false,
+      "evidence": "CRC在沟通中没有遵循知情沟通合规的原则，没有向患者解释试验的相关信息，也没有尊重患者的意愿。",
+      "suggestion": "CRC应遵循知情沟通合规的原则，不夸大疗效、不隐瞒风险/安慰剂与随机；不强迫催促签字入组；不越权做医学诊断或疗效保证；尊重自愿参加与随时退出；信息表述与知情同意边界一致。"
+    }
+  ],
+  "principles": {
+    "以患者为中心": "CRC没有以患者为中心，没有关注患者的需求和感受。",
+    "双向尊重": "CRC没有尊重患者的选择和权利，也没有得到患者的尊重。",
+    "持续耐心": "CRC没有持续耐心地与患者沟通，而是直接结束对话。"
+  },
+  "strengths": [],
+  "improvements": [
+    "CRC应提高沟通技巧，增强服务意识，尊重患者的选择和权利，以患者为中心，耐心、细致地与患者沟通。"
+  ],
+  "raw_text": "{\n  \"overall_score\": 0.0,\n  \"passed\": false,\n  \"summary\": \"CRC在与患者沟通时态度恶劣，直接导致患者放弃参加试验，严重不符合入组前知情沟通的要求。\",\n  \"dimensions\": [\n    {\n      \"category\": \"沟通准备\",\n      \"dimension\": \"信息传递\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"患者询问试验目的，CRC未做任何解释，直接结束对话。\",\n      \"suggestion\": \"CRC应使用通俗易懂的语言，详细解释试验目的。\"\n    },\n    {\n      \"category\": \"沟通准备\",\n      \"dimension\": \"知情同意\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"患者对试验目的不清楚，CRC未协助研究者确保患者充分理解知情同意书。\",\n      \"suggestion\": \"CRC应协助研究者，确保患者充分理解知情同意书的内容。\"\n    },\n    {\n      \"category\": \"沟通准备\",\n      \"dimension\": \"个性化适配\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"CRC未根据患者的情况调整沟通方式，而是采取了恶劣的态度。\",\n      \"suggestion\": \"CRC应根据患者的病情、文化水平、理解力等因素，调整沟通方式。\"\n    },\n    {\n      \"category\": \"沟通态度\",\n      \"dimension\": \"耐心程度\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"CRC没有耐心回答患者的问题，而是直接结束对话。\",\n      \"suggestion\": \"CRC应保持极大的耐心，鼓励患者表达疑惑。\"\n    },\n    {\n      \"category\": \"沟通态度\",\n      \"dimension\": \"共情能力\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"CRC没有站在患者的角度思考，而是采取了冷漠、机械化的态度。\",\n      \"suggestion\": \"CRC应站在患者的角度思考，如亲人般与患者交谈。\"\n    },\n    {\n      \"category\": \"沟通态度\",\n      \"dimension\": \"尊重程度\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"CRC不尊重患者的选择，强行结束对话。\",\n      \"suggestion\": \"CRC应尊重患者的选择，不强行催促入组。\"\n    },\n    {\n      \"category\": \"合规性\",\n      \"dimension\": \"知情沟通合规\",\n      \"score\": 0,\n      \"passed\": false,\n      \"evidence\": \"CRC在沟通中没有遵循知情沟通合规的原则，没有向患者解释试验的相关信息，也没有尊重患者的意愿。\",\n      \"suggestion\": \"CRC应遵循知情沟通合规的原则，不夸大疗效、不隐瞒风险/安慰剂与随机；不强迫催促签字入组；不越权做医学诊断或疗效保证；尊重自愿参加与随时退出；信息表述与知情同意边界一致。\"\n    }\n  ],\n  \"principles\": {\n    \"以患者为中心\": \"CRC没有以患者为中心，没有关注患者的需求和感受。\",\n    \"双向尊重\": \"CRC没有尊重患者的选择和权利，也没有得到患者的尊重。\",\n    \"持续耐心\": \"CRC没有持续耐心地与患者沟通，而是直接结束对话。\"\n  },\n  \"strengths\": [],\n  \"improvements\": [\"CRC应提高沟通技巧，增强服务意识，尊重患者的选择和权利，以患者为中心，耐心、细致地与患者沟通。\"]\n}",
+  "usage": {
+    "completion_tokens": 828,
+    "prompt_tokens": 978,
+    "total_tokens": 1806,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}

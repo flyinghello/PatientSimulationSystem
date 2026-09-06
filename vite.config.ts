@@ -17,8 +17,13 @@ const PROXY = {
     changeOrigin: true,
   },
   // Real-time voice — backend mints LiveKit tokens.
-  '^/voice/': {
+    '^/voice/': {
     target: 'http://127.0.0.1:8787',
+    changeOrigin: true,
+  },
+  // CRC dialogue front (front/server.py) — sessions / reply / tts / voice turn
+  '^/api/': {
+    target: 'http://127.0.0.1:8790',
     changeOrigin: true,
   },
 };

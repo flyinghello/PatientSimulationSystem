@@ -1,0 +1,19 @@
+{
+  "random_persona": true,
+  "persona": {
+    "age_band": "elder",
+    "education": "high",
+    "trial_experience": "screen_failed_before",
+    "emotion_base": "anxious",
+    "decision_role": "family_led",
+    "companion": "adult_child",
+    "life_constraints": [
+      "long_distance",
+      "chronic_comorbid",
+      "hard_to_leave_work"
+    ],
+    "pressure": "low",
+    "seed": 416480656
+  },
+  "persona_text": "老年，文化程度本科及以上，曾筛败过，情绪基调：焦虑，决策：家属主导决策，陪同：成年子女陪同，约束：路途远、合并慢病、工作日难请假，训练压力：低压力"
+}
