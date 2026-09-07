@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "studies": [
+    {
+      "stem": "Chronic rhinosinusitis with nasal polyps",
+      "label": "慢性鼻窦炎伴鼻息肉（III 期试验）",
+      "description": "CM512 注射液 III 期临床，患者首次接触临床试验，需要完整讲解到院安排、安慰剂与随访负担。",
+      "difficulty": 1,
+      "focus_dimensions": [
+        "信息传递",
+        "知情同意",
+        "耐心程度"
+      ],
+      "tags": [
+        "首次入组",
+        "安慰剂",
+        "随访负担"
+      ]
+    },
+    {
+      "stem": "B-cell malignancies",
+      "label": "B 细胞恶性肿瘤（治疗意愿沟通）",
+      "description": "重症患者治疗意愿沟通，涉及家庭商量、情绪支持与个性化方案，考验共情与尊重。",
+      "difficulty": 2,
+      "focus_dimensions": [
+        "共情能力",
+        "个性化适配",
+        "尊重程度"
+      ],
+      "tags": [
+        "重症",
+        "家属参与",
+        "情绪支持"
+      ]
+    }
+  ]
+}

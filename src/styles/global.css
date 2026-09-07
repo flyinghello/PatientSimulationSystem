@@ -381,3 +381,21 @@ h2 { font-weight: 800; }
 }
 .case-eval__sources h4 { margin: 0 0 6px; font-size: 13px; }
 .case-eval__sources ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.4; }
+
+/* ─── auth (login / register) ───────────────────────── */
+.auth-input {
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: white;
+  border: 3px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 14px;
+  box-shadow: 0 2px 0 var(--line);
+  outline: none;
+  transition: box-shadow 120ms ease;
+}
+.auth-input:focus {
+  box-shadow: 0 0 0 4px rgba(244, 122, 146, 0.25), 0 2px 0 var(--line);
+}
+.auth-input::placeholder { color: var(--ink-soft); }

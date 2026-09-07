@@ -18,6 +18,11 @@ backend/samples/*.wav
 
 tsconfig.tsbuildinfo
 
+# Python runtime cache and data
+**/__pycache__/
+service/accounts/users.json
+service/accounts/training_records.json
+
 # `skills` CLI (vercel-labs/skills) — installed locally, not committed
 /.agents/
 /skills/

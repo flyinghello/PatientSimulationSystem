@@ -2,8 +2,9 @@ import { useEffect } from 'react';
 import { store, useScreen, useTweaks } from './game/store';
 import { applyIntensity, applyPalette } from './styles/palettes';
 import { SplashScreen } from './components/SplashScreen';
+import { LoginScreen } from './components/LoginScreen';
 import { OnboardingScreen } from './components/OnboardingScreen';
-import { HomeScreen } from './components/HomeScreen';
+import { RoleHomeScreen } from './components/RoleHomeScreen';
 import { ModeSelectScreen } from './components/ModeSelectScreen';
 import { GPRoomScreen } from './components/GPRoomScreen';
 import { CaseLibraryScreen } from './components/CaseLibraryScreen';
@@ -12,6 +13,8 @@ import { EncounterScreen } from './components/EncounterScreen';
 import { EndConfirmScreen } from './components/EndConfirmScreen';
 import { DebriefScreen } from './components/DebriefScreen';
 import { HistoryScreen } from './components/HistoryScreen';
+import { ProfileScreen } from './components/ProfileScreen';
+import { AdminScreen } from './components/AdminScreen';
 import { AgenticRoundsScreen } from './components/AgenticRoundsScreen';
 import { AgentTopologyScreen } from './components/AgentTopologyScreen';
 import { BackgroundMusic } from './components/BackgroundMusic';
@@ -43,8 +46,9 @@ export default function App() {
   return (
     <div className="app">
       {screen === 'splash' && <SplashScreen />}
+      {screen === 'login' && <LoginScreen />}
       {screen === 'onboarding' && <OnboardingScreen />}
-      {screen === 'home' && <HomeScreen />}
+      {screen === 'home' && <RoleHomeScreen />}
       {screen === 'mode' && <ModeSelectScreen />}
       {screen === 'gpRoom' && <GPRoomScreen />}
       {screen === 'library' && <CaseLibraryScreen />}
@@ -53,6 +57,8 @@ export default function App() {
       {screen === 'endConfirm' && <EndConfirmScreen />}
       {screen === 'debrief' && <DebriefScreen />}
       {screen === 'history' && <HistoryScreen />}
+      {screen === 'profile' && <ProfileScreen />}
+      {screen === 'admin' && <AdminScreen />}
       {screen === 'agenticRounds' && <AgenticRoundsScreen />}
       {screen === 'agentTopology' && <AgentTopologyScreen />}
       <BackgroundMusic />
