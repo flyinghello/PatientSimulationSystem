@@ -10,9 +10,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
+import logging
+import shutil
 import sys
+import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +28,8 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from fastapi import Depends, Header
+
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -30,6 +37,15 @@ if str(_ROOT) not in sys.path:
 # 加载项目根 .env（VOLC_API_KEY / TEXT_GENERATION_API_KEY）
 from config import setting as _cfg  # noqa: E402, F401
 
+from service.accounts.skill import (  # noqa: E402
+    load_study_catalog,
+    recommend_study,
+)
+from service.accounts.store import (  # noqa: E402
+    ROLES,
+    AccountStore,
+    store as account_store,
+)
 from service.agent.ark_recognize import (  # noqa: E402
     ASRConfig,
     recognize_bytes,
@@ -50,7 +66,12 @@ from service.agent.patient_turn import (  # noqa: E402
     save_json,
 )
 from service.agent.personality import sample_persona  # noqa: E402
-from service.agent.study_paths import resolve_study  # noqa: E402
+from service.agent.cde_extract import (  # noqa: E402
+    CdeExtractAgent,
+    extract_plain_text,
+    review_from_cde,
+)
+from service.agent.study_paths import normalize_stem, resolve_study  # noqa: E402
 from service.agent.tts_generate import (  # noqa: E402
     BidirectionalTTSAgent,
     TTSConfig,
@@ -63,7 +84,15 @@ from service.agent.tts_emotion import (  # noqa: E402
 FRONT_DIR = Path(__file__).resolve().parent
 SESSIONS_BASE = _ROOT / "service" / "acknowledge" / "dialogue_sessions"
 
+ACK_DIR = _ROOT / "service" / "acknowledge"
+STUDY_CATALOG_FILE = ACK_DIR / "study_catalog.json"
+UPLOADS_BASE = ACK_DIR / "uploaded_trials"
+DRAFTS_BASE = UPLOADS_BASE / "drafts"
+UPLOAD_MAX_BYTES = 25 * 1024 * 1024
+_DRAFT_TTL_SECONDS = 24 * 3600
+
 app = FastAPI(title="CRC Dialogue Front")
+logger = logging.getLogger("front.server")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -75,6 +104,8 @@ app.add_middleware(
 class StartSessionBody(BaseModel):
     study: str = Field(..., min_length=1)
     random_persona: bool = False
+    # 可选：本轮训练重点（来自能力画像推荐），会注入患者扮演提示
+    focus: str | None = None
 
 
 class ReplyBody(BaseModel):
@@ -446,6 +477,7 @@ async def start_session(body: StartSessionBody) -> dict[str, Any]:
         concerns_path=str(paths.concerns.resolve()),
         opening_path=opening_path_str,
         study_stem=paths.stem,
+        training_focus=(body.focus or "").strip(),
     )
     _attach_persona_meta(
         session,
@@ -630,6 +662,386 @@ async def voice_turn(
     if tts_error:
         payload["tts_error"] = tts_error
     return payload
+
+
+# ---------------------------------------------------------------------------
+# 账号 / 角色 / 训练记录 / 管理员 API
+# ---------------------------------------------------------------------------
+
+class RegisterBody(BaseModel):
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+    display_name: str | None = None
+
+
+class LoginBody(BaseModel):
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+class TrainingRecordBody(BaseModel):
+    study: str = Field(..., min_length=1)
+    session_id: str = ""
+    overall_score: float | None = None
+    passed: bool = False
+    summary: str = ""
+    dimensions: list[dict[str, Any]] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    improvements: list[str] = Field(default_factory=list)
+    training_focus: str = ""
+
+
+class RolePatchBody(BaseModel):
+    role: str | None = None
+    disabled: bool | None = None
+
+
+def _bearer_token(authorization: str | None = Header(default=None)) -> str:
+    if not authorization:
+        return ""
+    parts = authorization.split(" ", 1)
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1].strip()
+    return ""
+
+
+def _current_user(
+    token: str = Depends(_bearer_token),
+) -> dict[str, Any]:
+    user = account_store.user_by_token(token) if token else None
+    if not user:
+        raise HTTPException(status_code=401, detail="未登录或登录已过期")
+    return user
+
+
+def _require_role(user: dict[str, Any], *roles: str) -> None:
+    if user.get("role") not in roles:
+        raise HTTPException(status_code=403, detail="无权访问该功能")
+
+
+@app.post("/api/auth/register")
+def register(body: RegisterBody) -> dict[str, Any]:
+    """注册新用户（默认角色：学生）。"""
+    try:
+        user = account_store.register(
+            body.username,
+            body.password,
+            body.display_name or "",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    token = account_store.create_token(user["username"])
+    return {"token": token, "user": user}
+
+
+@app.post("/api/auth/login")
+def login(body: LoginBody) -> dict[str, Any]:
+    user = account_store.authenticate(body.username, body.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    token = account_store.create_token(user["username"])
+    return {"token": token, "user": user}
+
+
+@app.post("/api/auth/logout")
+def logout(token: str = Depends(_bearer_token)) -> dict[str, Any]:
+    account_store.revoke_token(token)
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def me(user: dict[str, Any] = Depends(_current_user)) -> dict[str, Any]:
+    return {"user": user}
+
+
+@app.post("/api/training/records")
+def add_training_record(
+    body: TrainingRecordBody,
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    """会话结束后上报一条训练记录（含评估结果），用于能力画像。"""
+    rec = account_store.add_training_record(
+        {
+            "username": user["username"],
+            "display_name": user.get("display_name", ""),
+            "study": body.study,
+            "session_id": body.session_id,
+            "overall_score": body.overall_score,
+            "passed": body.passed,
+            "summary": body.summary,
+            "dimensions": body.dimensions,
+            "strengths": body.strengths,
+            "improvements": body.improvements,
+            "training_focus": body.training_focus,
+        }
+    )
+    return {"record": rec, "profile": recommend_study(account_store.records_for(user["username"]))}
+
+
+@app.get("/api/training/records")
+def my_training_records(
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    records = account_store.records_for(user["username"])
+    return {"records": list(reversed(records))}
+
+
+@app.get("/api/training/profile")
+def training_profile(
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    """能力画像 + 下一轮推荐。"""
+    records = account_store.records_for(user["username"])
+    return recommend_study(records, catalog=load_study_catalog())
+
+
+@app.get("/api/admin/users")
+def admin_list_users(user: dict[str, Any] = Depends(_current_user)) -> dict[str, Any]:
+    _require_role(user, "admin")
+    return {"users": account_store.list_users()}
+
+
+@app.patch("/api/admin/users/{username}")
+def admin_update_user(
+    username: str,
+    body: RolePatchBody,
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    _require_role(user, "admin")
+    try:
+        if body.role is not None:
+            updated = account_store.set_user_role(username, body.role)
+        if body.disabled is not None:
+            updated = account_store.set_user_disabled(username, body.disabled)
+        if body.role is None and body.disabled is None:
+            updated = account_store.get_user(username)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"用户不存在: {username}")
+    return {"user": updated}
+
+
+@app.delete("/api/admin/users/{username}")
+def admin_delete_user(
+    username: str,
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    _require_role(user, "admin")
+    try:
+        account_store.delete_user(username)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"ok": True}
+
+
+@app.get("/api/admin/stats")
+def admin_stats(user: dict[str, Any] = Depends(_current_user)) -> dict[str, Any]:
+    # 工作人员可查看整体训练统计（只读），用户管理仅限管理员
+    _require_role(user, "admin", "staff")
+    return account_store.stats()
+
+
+@app.get("/api/admin/records")
+def admin_records(
+    user: dict[str, Any] = Depends(_current_user),
+    limit: int = 200,
+) -> dict[str, Any]:
+    _require_role(user, "admin", "staff")
+    return {"records": account_store.all_records(limit=limit)}
+
+
+@app.get("/api/admin/studies")
+def admin_studies(user: dict[str, Any] = Depends(_current_user)) -> dict[str, Any]:
+    _require_role(user, "admin")
+    return {"catalog": load_study_catalog(), "roles": list(ROLES)}
+
+
+def _json_atomic_write(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def _purge_stale_drafts() -> None:
+    if not DRAFTS_BASE.is_dir():
+        return
+    now = time.time()
+    for draft_dir in DRAFTS_BASE.iterdir():
+        try:
+            if now - draft_dir.stat().st_mtime > _DRAFT_TTL_SECONDS:
+                shutil.rmtree(draft_dir, ignore_errors=True)
+        except OSError:
+            continue
+
+
+@app.post("/api/admin/studies/import")
+async def admin_import_study(
+    file: UploadFile = File(...),
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    """管理员上传 CDE 临床试验资料（docx / pdf / html / md / txt / json），
+    抽取或校验成结构化登记草稿，用于新增一种疾病类型的训练病例。
+
+    流程：文件落草稿目录（draft_id）→ 结构化 JSON 直接校验；
+    其余格式先转纯文本，再调用方舟 LLM 抽取成 CDE 登记结构。
+    """
+    _require_role(user, "admin")
+    _purge_stale_drafts()
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="缺少文件名")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="上传内容为空")
+    if len(raw) > UPLOAD_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"文件过大（上限 {UPLOAD_MAX_BYTES // (1024 * 1024)}MB）",
+        )
+
+    suffix = Path(file.filename).suffix.lower()
+    method = "json" if suffix in {".json"} else "llm"
+    try:
+        if suffix in {".json"}:
+            try:
+                parsed = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise HTTPException(status_code=400, detail=f"JSON 解析失败：{exc}") from exc
+            if not isinstance(parsed, dict):
+                raise HTTPException(status_code=400, detail="JSON 根节点必须是对象（CDE 登记结构）")
+            review = review_from_cde(parsed)
+        else:
+            text = extract_plain_text(raw, file.filename)
+            async with CdeExtractAgent() as agent:
+                result = await agent.extract(text)
+            review = review_from_cde(result["cde"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    draft_id = uuid.uuid4().hex
+    draft_dir = DRAFTS_BASE / draft_id
+    draft_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        (draft_dir / f"source{suffix}").write_bytes(raw)
+        _json_atomic_write(draft_dir / "review.json", review)
+    except OSError as exc:
+        shutil.rmtree(draft_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=f"草稿保存失败：{exc}") from exc
+
+    return {
+        "ok": True,
+        "draft_id": draft_id,
+        "method": method,
+        "filename": file.filename,
+        **review,
+    }
+
+
+class StudyRegisterBody(BaseModel):
+    draft_id: str = ""
+    stem: str = Field(..., min_length=1)
+    label: str = ""
+    description: str = ""
+    difficulty: int = 1
+    focus_dimensions: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    cde: dict[str, Any] = Field(default_factory=dict)
+    generate_assets: bool = True
+
+
+def _existing_stems() -> set[str]:
+    """已占用的病例键名：各产物目录中的文件名 + 目录登记。"""
+    existing: set[str] = set()
+    for sub in ("relative_experiment", "opening_state", "questions_pool"):
+        root = ACK_DIR / sub
+        if not root.is_dir():
+            continue
+        for p in root.glob("*.json"):
+            existing.add(normalize_stem(p.name))
+    for item in load_study_catalog():
+        if isinstance(item, dict) and item.get("stem"):
+            existing.add(normalize_stem(str(item["stem"])))
+    existing.discard("")
+    return existing
+
+
+async def _generate_study_assets(stem: str) -> None:
+    """后台生成训练资产（背景 / 顾虑池 / 开场状态），失败仅记录日志，不影响登记。"""
+    from service.agent.run_pipeline import _amain as pipeline_main
+
+    try:
+        code = await pipeline_main(["--study", stem, "--stages", "prep"])
+        logger.info("[admin/studies] assets generated stem=%s exit=%s", stem, code)
+    except Exception:  # noqa: BLE001
+        logger.exception("[admin/studies] assets generation failed stem=%s", stem)
+
+
+@app.post("/api/admin/studies")
+async def admin_register_study(
+    body: StudyRegisterBody,
+    user: dict[str, Any] = Depends(_current_user),
+) -> dict[str, Any]:
+    """确认登记：审阅后的草稿落盘为新的疾病类型病例（CDE JSON + 目录登记 + 源文件归档）。"""
+    _require_role(user, "admin")
+    stem = normalize_stem(body.stem)
+    if not stem:
+        raise HTTPException(status_code=400, detail="缺少病例键名 stem")
+    if any(ch in stem for ch in ('/', "\\", ":", "*", "?", '"', "<", ">", "|")):
+        raise HTTPException(status_code=400, detail="stem 含非法字符")
+
+    existing = _existing_stems()
+    if stem in existing:
+        raise HTTPException(status_code=409, detail=f"「{stem}」已存在病例目录中，请更换键名")
+
+    cde = body.cde if isinstance(body.cde, dict) else {}
+    entry: dict[str, Any] = {
+        "stem": stem,
+        "label": (body.label or body.cde.get("title_and_background", {}).get("indication") or stem).strip(),
+        "description": body.description.strip(),
+        "difficulty": body.difficulty if isinstance(body.difficulty, int) else 1,
+        "focus_dimensions": [str(x) for x in body.focus_dimensions][:6],
+        "tags": [str(x) for x in body.tags][:6],
+    }
+
+    cde_file = ACK_DIR / "relative_experiment" / f"{stem}.json"
+    try:
+        _json_atomic_write(cde_file, cde)
+
+        catalog_doc: dict[str, Any] = {"version": 1, "studies": load_study_catalog()}
+        if not any(s.get("stem") == stem for s in catalog_doc["studies"] if isinstance(s, dict)):
+            catalog_doc["studies"].append(entry)
+        _json_atomic_write(STUDY_CATALOG_FILE, catalog_doc)
+    except OSError as exc:
+        raise HTTPException(status_code=500, detail=f"登记写入失败：{exc}") from exc
+
+    # 归档上传的原始资料（若有草稿）
+    if body.draft_id:
+        draft_dir = DRAFTS_BASE / body.draft_id
+        if draft_dir.is_dir():
+            try:
+                sources = [p for p in draft_dir.iterdir() if p.is_file() and p.name.startswith("source.")]
+                if sources:
+                    target_dir = UPLOADS_BASE / stem
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(sources[0]), str(target_dir / sources[0].name))
+                shutil.rmtree(draft_dir, ignore_errors=True)
+            except OSError as exc:
+                logger.warning("[admin/studies] archive draft failed stem=%s: %s", stem, exc)
+
+    if body.generate_assets:
+        asyncio.create_task(_generate_study_assets(stem))
+
+    return {
+        "ok": True,
+        "study": entry,
+        "generating": bool(body.generate_assets),
+        "hint": "训练资产（背景/顾虑池/开场）正在后台生成，约 1~2 分钟，可稍后刷新查看。"
+        if body.generate_assets
+        else "",
+    }
 
 
 @app.get("/")

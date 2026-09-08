@@ -41,8 +41,11 @@ import {
   playBase64Mp3,
   resolveCrcStudy,
   stopCrcAudio,
+  type CrcSessionPayload,
 } from './crcClient';
 import type { DialogueBackend } from '../game/types';
+import { getTrainingFocus } from '../game/trainingContext';
+import { getStoredToken, submitTrainingRecord } from '../game/auth';
 
 const FALLBACK_PERSONA =
   'You are a patient speaking to a doctor. Keep replies to 1–2 short spoken sentences. ' +
@@ -145,6 +148,8 @@ export class Conversation {
   private crcSessionId: string | null = null;
   /** Bumps whenever a new CRC utterance starts — drops stale TTS responses. */
   private crcSpeakSeq = 0;
+  /** 当前 CRC 会话是否已上报训练记录（防重复上报）。 */
+  private crcRecordSubmitted = false;
 
   private messageSubscribers = new Set<(msgs: ReadonlyArray<ChatMessage>) => void>();
 
@@ -248,6 +253,7 @@ export class Conversation {
       }
       this.saveMessages();
       this.emitMessages();
+      if (data.ended) void this.maybeSubmitCrcRecord(data);
     } catch (err: any) {
       console.error('CRC voice turn failed:', err);
       this.listeners.onError?.(err?.message ?? String(err));
@@ -260,6 +266,53 @@ export class Conversation {
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.messages));
     } catch { /* quota or privacy-mode — silently ignore */ }
+  }
+
+  /**
+   * 会话结束时上报训练记录（登录用户），并刷新能力画像。
+   * 仅当评估结果可用且该会话尚未上报过时执行。
+   */
+  private async maybeSubmitCrcRecord(data: CrcSessionPayload): Promise<void> {
+    if (!data.ended || !data.evaluation) return;
+    if (this.crcRecordSubmitted) return;
+    const token = getStoredToken();
+    if (!token || token === 'guest') return;
+    const ev = data.evaluation as {
+      overall_score?: number | null;
+      passed?: boolean;
+      summary?: string;
+      dimensions?: Array<Record<string, unknown>>;
+      strengths?: string[];
+      improvements?: string[];
+    };
+    if (ev?.overall_score == null) return;
+    this.crcRecordSubmitted = true;
+    try {
+      const res = await submitTrainingRecord({
+        study: this.crcStudy,
+        session_id: this.crcSessionId ?? '',
+        overall_score: typeof ev.overall_score === 'number' ? ev.overall_score : null,
+        passed: Boolean(ev.passed),
+        summary: typeof ev.summary === 'string' ? ev.summary : '',
+        dimensions: Array.isArray(ev.dimensions) ? (ev.dimensions as any) : [],
+        strengths: Array.isArray(ev.strengths) ? ev.strengths : [],
+        improvements: Array.isArray(ev.improvements) ? ev.improvements : [],
+        training_focus: getTrainingFocus(),
+      });
+      // 用最新画像刷新 Store（动态导入避免循环依赖）
+      if (res?.profile) {
+        try {
+          const { store } = await import('../game/store');
+          store.setSkillProfile(res.profile);
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch (err) {
+      // 上报失败不阻断对话流程，仅打日志
+      console.warn('训练记录上报失败:', err);
+      this.crcRecordSubmitted = false;
+    }
   }
 
   private loadMessages(): ChatMessage[] | null {
@@ -498,8 +551,13 @@ export class Conversation {
       if (this.storageKey) {
         try { localStorage.removeItem(this.storageKey); } catch { /* noop */ }
       }
-      const session = await crcCreateSession({ study: this.crcStudy, randomPersona: false });
+      const session = await crcCreateSession({
+        study: this.crcStudy,
+        randomPersona: false,
+        focus: getTrainingFocus(),
+      });
       this.crcSessionId = session.session_id;
+      this.crcRecordSubmitted = false;
       const line = (session.patient_line || this.initialMessage.content || '').trim();
       this.initialMessage = { role: 'assistant', content: line || '您好。' };
       this.messages = [{ role: 'assistant', content: this.initialMessage.content }];
@@ -696,6 +754,7 @@ export class Conversation {
           }
         }
         this.setStatus(data.ended ? 'ready' : 'ready');
+        if (data.ended) void this.maybeSubmitCrcRecord(data);
       } catch (err: any) {
         console.error('CRC reply failed:', err);
         this.listeners.onError?.(err?.message ?? String(err));

@@ -200,7 +200,7 @@ export function ModeSelectScreen() {
         >
           <Door
             label="试药前 / 受试者沟通"
-            sub="主轨 · 选择患者角色卡进入随访诊室"
+            sub="主轨 · 选择患者角色卡进入入组沟通诊室"
             color="var(--mint)"
             doorColor="#5FCFA0"
             available

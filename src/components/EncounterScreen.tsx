@@ -115,7 +115,7 @@ function Loader() {
           letterSpacing: '0.05em',
         }}
       >
-        正在加载随访诊室…
+        正在加载入组沟通诊室…
       </div>
     </Html>
   );

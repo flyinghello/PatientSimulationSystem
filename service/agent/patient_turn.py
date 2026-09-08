@@ -313,8 +313,22 @@ def format_dialogue(
     return "\n".join(lines) if lines else "（暂无）"
 
 
-def build_system_prompt(skill: str, *, max_turns: int = DEFAULT_MAX_TURNS) -> str:
+def build_system_prompt(
+    skill: str,
+    *,
+    max_turns: int = DEFAULT_MAX_TURNS,
+    training_focus: str = "",
+) -> str:
     schema = json.dumps(OUTPUT_SCHEMA_EXAMPLE, ensure_ascii=False, indent=2)
+    focus_para = ""
+    if training_focus.strip():
+        focus_para = (
+            "\n【本回合训练重点】\n"
+            f"{training_focus.strip()}\n"
+            "这是受训者本次需要强化的沟通能力。你可以据此调整追问强度、"
+            "情绪表现和顾虑表达：当受训者体现该能力时给予更积极的回应，"
+            "当受训者欠缺该能力时适度加重顾虑或情绪，帮助其获得针对性练习。\n"
+        )
     return (
         "你正在 CRC 沟通训练中扮演患者，进行入组前多轮对话。\n"
         "请严格依据技能说明，按「更新状态 → 决定行为 → 生成台词」完成输出。\n\n"
@@ -630,6 +644,7 @@ class DialogueSession:
     end_reason: str = ""
     last_action: str = ""
     last_line: str = ""
+    training_focus: str = ""
 
     @property
     def state_path(self) -> Path:
@@ -670,6 +685,7 @@ class DialogueSession:
                 "background_path": self.background_path,
                 "concerns_path": self.concerns_path,
                 "opening_path": self.opening_path,
+                "training_focus": self.training_focus,
             },
         )
 
@@ -688,6 +704,7 @@ class DialogueSession:
         concerns_path: str = "",
         opening_path: str = "",
         study_stem: str = "",
+        training_focus: str = "",
     ) -> DialogueSession:
         portrait, state, line = extract_opening_bundle(opening)
         session = cls(
@@ -701,6 +718,7 @@ class DialogueSession:
             concerns_path=concerns_path,
             opening_path=opening_path,
             study_stem=study_stem,
+            training_focus=training_focus,
             ended=False,
             last_line=line,
         )
@@ -757,6 +775,7 @@ class DialogueSession:
             concerns_path=str(meta.get("concerns_path", "")),
             opening_path=str(meta.get("opening_path", "")),
             study_stem=str(meta.get("study_stem", "")),
+            training_focus=str(meta.get("training_focus", "") or ""),
             ended=bool(state_file.get("是否结束", meta.get("ended", False))),
             end_reason=str(state_file.get("结束原因", "") or ""),
             last_action=str(state_file.get("动作", "") or ""),
@@ -867,6 +886,7 @@ class PatientTurnAgent:
         dialogue: Sequence[dict[str, str]],
         crc_reply: str,
         patient_turn_count: int | None = None,
+        training_focus: str = "",
     ) -> TurnResult:
         if not str(crc_reply).strip():
             raise ValueError("CRC 最新回答不能为空")
@@ -902,7 +922,9 @@ class PatientTurnAgent:
             {
                 "role": "system",
                 "content": build_system_prompt(
-                    self.skill, max_turns=self.config.max_turns
+                    self.skill,
+                    max_turns=self.config.max_turns,
+                    training_focus=training_focus,
                 ),
             },
             {"role": "user", "content": user_content},
@@ -978,6 +1000,7 @@ class PatientTurnAgent:
             dialogue=session.dialogue,
             crc_reply=crc_reply,
             patient_turn_count=patient_turn_count,
+            training_focus=session.training_focus,
         )
         session.state = result.state
         session.portrait = result.data["患者画像"]

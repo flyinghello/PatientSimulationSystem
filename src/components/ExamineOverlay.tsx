@@ -45,7 +45,7 @@ export function ExamineOverlay({ onClose, onDispatch }: Props) {
   const rxUnlocked = submitted !== null;
 
   const tabs: Array<{ id: Tab; label: string; badge?: number | string; disabled?: boolean }> = [
-    { id: 'history', label: '随访问答', badge: `${asked.size}/${c.anamnesis.length}` },
+    { id: 'history', label: '沟通问答', badge: `${asked.size}/${c.anamnesis.length}` },
     { id: 'chat', label: '对话' },
     { id: 'tests', label: '核查记录', },
     { id: 'results', label: '结果', badge: newResultsCount > 0 ? newResultsCount : undefined },
@@ -97,7 +97,7 @@ export function ExamineOverlay({ onClose, onDispatch }: Props) {
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
             <span className="chip butter" style={{ fontSize: 11 }}>
-              随访评估
+              入组沟通评估
             </span>
             <h2 style={{ margin: 0, fontSize: 22, lineHeight: 1.1 }}>{c.name}</h2>
             <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink-2)' }}>

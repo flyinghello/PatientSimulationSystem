@@ -40,6 +40,7 @@ function errMsg(data: any, status: number): string {
 export async function crcCreateSession(opts: {
   study: string;
   randomPersona?: boolean;
+  focus?: string;
 }): Promise<CrcSessionPayload> {
   const res = await fetch('/api/sessions', {
     method: 'POST',
@@ -47,6 +48,7 @@ export async function crcCreateSession(opts: {
     body: JSON.stringify({
       study: opts.study,
       random_persona: Boolean(opts.randomPersona),
+      focus: opts.focus || undefined,
     }),
   });
   const data = await parseJson(res);

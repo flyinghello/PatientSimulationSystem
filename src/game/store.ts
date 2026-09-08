@@ -15,6 +15,9 @@ import type { PaletteName } from '../styles/palettes';
 import type { Case as MedKitCase } from '../data/cases';
 import { CASES, getCase, getCaseClinic, getPatientCase } from '../data/cases';
 import { ensureAudioContext } from '../voice/conversationStore';
+import type { AuthUser, SkillProfile } from './auth';
+import { clearAuth, getStoredToken, getStoredUser, persistAuth } from './auth';
+import { setTrainingFocus as setFocusContext } from './trainingContext';
 
 const ONBOARDED_KEY = 'medkit:onboarded';
 
@@ -116,6 +119,10 @@ class Store {
     polyclinic: { clinic: DEFAULT_CLINIC, patient: null },
     lastEncounter: null,
     viewedEvalHistoryId: null,
+    authUser: getStoredUser(),
+    authToken: getStoredToken(),
+    skillProfile: null,
+    trainingFocus: '',
   };
 
   private listeners = new Set<() => void>();
@@ -145,9 +152,53 @@ class Store {
 
   clearViewedEval = () => this.set({ viewedEvalHistoryId: null });
 
-  /** Splash → onboarding (first run) or polyclinic (returning). */
+  /** Splash → login (not authed) / onboarding (first run) / home (returning). */
   beginFromSplash = () => {
-    this.set({ screen: this.state.hasOnboarded ? 'mode' : 'onboarding' });
+    if (!this.state.authToken) {
+      this.set({ screen: 'login' });
+      return;
+    }
+    this.set({ screen: this.state.hasOnboarded ? 'home' : 'onboarding' });
+  };
+
+  // ── auth ─────────────────────────────────────────
+  setAuth = (token: string, user: AuthUser) => {
+    persistAuth(token, user);
+    this.set({
+      authToken: token,
+      authUser: user,
+      screen: this.state.hasOnboarded ? 'home' : 'onboarding',
+    });
+  };
+
+  /** 游客模式：不创建账号，直接体验训练（不保存训练记录）。 */
+  enterAsGuest = () => {
+    clearAuth();
+    this.set({
+      authToken: 'guest',
+      authUser: { username: 'guest', display_name: '游客', role: 'guest' },
+      skillProfile: null,
+      screen: this.state.hasOnboarded ? 'home' : 'onboarding',
+    });
+  };
+
+  logout = () => {
+    clearAuth();
+    this.set({
+      authToken: null,
+      authUser: null,
+      skillProfile: null,
+      screen: 'login',
+    });
+  };
+
+  setSkillProfile = (profile: SkillProfile | null) =>
+    this.set({ skillProfile: profile });
+
+  /** 下一轮训练目标（来自能力画像推荐），随会话注入患者扮演提示。 */
+  setTrainingFocus = (focus: string) => {
+    setFocusContext(focus);
+    this.set({ trainingFocus: focus });
   };
 
   // ── onboarding ────────────────────────────────
@@ -156,7 +207,7 @@ class Store {
 
   finishOnboarding = () => {
     writeOnboarded(true);
-    this.set({ hasOnboarded: true, screen: 'mode', onboardingStep: 0 });
+    this.set({ hasOnboarded: true, screen: 'home', onboardingStep: 0 });
   };
 
   // ── tweaks ────────────────────────────────────

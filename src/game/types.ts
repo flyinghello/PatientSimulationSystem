@@ -5,6 +5,7 @@ import type { ClinicId } from './clinic';
 
 export type Screen =
   | 'splash'
+  | 'login'
   | 'onboarding'
   | 'home'
   | 'mode'
@@ -15,6 +16,8 @@ export type Screen =
   | 'endConfirm'
   | 'debrief'
   | 'history'
+  | 'profile'
+  | 'admin'
   | 'agenticRounds'
   | 'agentTopology';
 
@@ -216,4 +219,11 @@ export interface GameState {
    *  `evalHistory` storage instead of running the agent against a live
    *  encounter. Cleared when the user navigates away. */
   viewedEvalHistoryId: string | null;
+  /** 登录用户与令牌（游客为 'guest' + role: 'guest'）。 */
+  authUser: import('./auth').AuthUser | null;
+  authToken: string | null;
+  /** 当前用户能力画像（来自 /api/training/profile），登录后拉取。 */
+  skillProfile: import('./auth').SkillProfile | null;
+  /** 下一轮训练目标（来自能力画像推荐），随会话注入患者扮演提示。 */
+  trainingFocus: string;
 }
